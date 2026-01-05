@@ -228,3 +228,22 @@ Energy-Intel is a **live, verifiable system** demonstrating applied expertise in
 - Cost-aware, production-grade AI pipelines
 
 Designed for professional, academic, and policy-focused evaluation.
+
+## Contributors
+
+**Robin Godinho**  
+Founder & Developer
+
+Contact: rgodinho736@gmail.com
+
+Energy-Intel was conceived, designed, and implemented by Robin Godinho.  
+The contributor is responsible for:
+
+- System architecture and technical design  
+- Data ingestion and processing pipelines  
+- AI summarization and classification logic  
+- Cloud deployment and cost optimization  
+- Policy alignment and information curation strategy  
+
+This project is independently developed and maintained, with a focus on public-interest energy intelligence and policy support.
+
