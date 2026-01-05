@@ -1,9 +1,13 @@
 # Energy-Intel: U.S. Energy Policy Intelligence Platform
 
+![Energy-Intel Landing Page](energy-intel.png)
+
 
 ## Overview
 
 **Energy-Intel** is an AI-powered energy intelligence platform designed to serve as a **centralized, continuously updated reference hub for U.S. energy policymakers, analysts, and policy-adjacent decision-makers**.
+
+Please visit the website here https://energy-intel.org/
 
 The platform aggregates, summarizes, and categorizes near real-time **U.S. energy policy, regulatory, and infrastructure-relevant developments**, reducing information fragmentation and enabling faster, evidence-based decision-making on issues critical to:
 
