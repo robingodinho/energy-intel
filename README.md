@@ -32,6 +32,19 @@ Energy-related information is often fragmented across agencies, released faster 
 
 ---
 
+## Policy & Decision-Making Use Cases
+
+Energy-Intel is designed to support real-world policy and infrastructure workflows, including:
+
+- Monitoring federal and state energy regulatory developments
+- Identifying emerging risks to grid reliability and energy affordability
+- Tracking infrastructure investments related to AI, data centers, and electrification
+- Supporting policy research, briefing preparation, and inter-agency coordination
+- Providing timely references for compliance, planning, and oversight activities
+
+The platform emphasizes speed, clarity, and reliability to reduce information lag in time-sensitive policy environments.
+---
+
 ## Core Design Goals
 
 1. **Timeliness** – Scheduled ingestion of official policy sources  
