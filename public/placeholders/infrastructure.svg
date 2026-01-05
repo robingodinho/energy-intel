@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" fill="#1a1510"/>
+  <defs>
+    <linearGradient id="inf-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d97706;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#92400e;stop-opacity:0.4" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#inf-grad)"/>
+  <!-- Power Lines -->
+  <g stroke="#fbbf24" stroke-width="3" opacity="0.7">
+    <!-- Left Tower -->
+    <line x1="80" y1="350" x2="80" y2="150"/>
+    <line x1="60" y1="180" x2="100" y2="180"/>
+    <line x1="50" y1="200" x2="110" y2="200"/>
+    <line x1="60" y1="150" x2="80" y2="130"/>
+    <line x1="100" y1="150" x2="80" y2="130"/>
+    <!-- Right Tower -->
+    <line x1="320" y1="350" x2="320" y2="150"/>
+    <line x1="300" y1="180" x2="340" y2="180"/>
+    <line x1="290" y1="200" x2="350" y2="200"/>
+    <line x1="300" y1="150" x2="320" y2="130"/>
+    <line x1="340" y1="150" x2="320" y2="130"/>
+  </g>
+  <!-- Power Lines connecting -->
+  <g stroke="#f59e0b" stroke-width="2" fill="none" opacity="0.6">
+    <path d="M110 180 Q200 200 290 180"/>
+    <path d="M110 200 Q200 230 290 200"/>
+  </g>
+  <!-- Pipeline -->
+  <g transform="translate(0, 280)">
+    <rect x="40" y="30" width="320" height="30" rx="15" fill="#b45309" opacity="0.7"/>
+    <ellipse cx="40" cy="45" rx="15" ry="15" fill="#d97706" opacity="0.8"/>
+    <ellipse cx="360" cy="45" rx="15" ry="15" fill="#d97706" opacity="0.8"/>
+    <rect x="140" y="25" width="40" height="40" rx="4" fill="#fbbf24" opacity="0.5"/>
+    <rect x="220" y="25" width="40" height="40" rx="4" fill="#fbbf24" opacity="0.5"/>
+  </g>
+  <text x="200" y="385" text-anchor="middle" fill="#fbbf24" font-family="system-ui" font-size="14" font-weight="600">INFRASTRUCTURE</text>
+</svg>
+

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" fill="#1a1f2e"/>
+  <defs>
+    <linearGradient id="lng-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:0.5" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#lng-grad)"/>
+  <!-- LNG Tank Icon -->
+  <ellipse cx="200" cy="320" rx="80" ry="20" fill="#2563eb" opacity="0.3"/>
+  <path d="M140 160 C140 120 260 120 260 160 L260 300 C260 320 140 320 140 300 Z" fill="#3b82f6" opacity="0.6"/>
+  <path d="M140 160 C140 180 260 180 260 160 C260 140 140 140 140 160" fill="#60a5fa" opacity="0.8"/>
+  <!-- Snowflake accent -->
+  <g transform="translate(200, 220)" stroke="#93c5fd" stroke-width="3" fill="none">
+    <line x1="0" y1="-30" x2="0" y2="30"/>
+    <line x1="-26" y1="-15" x2="26" y2="15"/>
+    <line x1="-26" y1="15" x2="26" y2="-15"/>
+  </g>
+  <text x="200" y="380" text-anchor="middle" fill="#60a5fa" font-family="system-ui" font-size="14" font-weight="600">LNG</text>
+</svg>
+
