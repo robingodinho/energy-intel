@@ -46,6 +46,15 @@ The platform emphasizes speed, clarity, and reliability to reduce information la
 
 ---
 
+## Citing This Project
+
+If referencing Energy-Intel in academic, policy, or professional work, please cite:
+
+Energy-Intel: U.S. Energy Policy Intelligence Platform  
+https://energy-intel.org
+
+---
+
 ## Core Design Goals
 
 1. **Timeliness** – Scheduled ingestion of official policy sources  
@@ -108,15 +117,6 @@ Energy-Intel ingests data exclusively from **authoritative U.S. government sourc
 - Energy Information Administration (EIA)
 
 Only metadata and short excerpts are stored. All entries link to original sources.
-
----
-
-## Citing This Project
-
-If referencing Energy-Intel in academic, policy, or professional work, please cite:
-
-Energy-Intel: U.S. Energy Policy Intelligence Platform  
-https://energy-intel.org
 
 ---
 
