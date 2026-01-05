@@ -2,12 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/ingest",
-      "schedule": "0 6 * * *" 
-    },
-    {
-      "path": "/api/enrich-images",
-      "schedule": "30 6 * * *"
+      "path": "/api/orchestrator",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
