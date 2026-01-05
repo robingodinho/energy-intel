@@ -110,13 +110,20 @@ Frontend Feed (Instant Load)
 
 ## Data Sources
 
-Energy-Intel ingests data exclusively from **authoritative U.S. government sources**:
-- Federal Energy Regulatory Commission (FERC)
-- Environmental Protection Agency (EPA)
+Energy-Intel aggregates from authoritative energy sector sources:
+
+**Government Sources:**
 - Department of Energy (DOE)
 - Energy Information Administration (EIA)
 
-Only metadata and short excerpts are stored. All entries link to original sources.
+**Industry Intelligence:**
+- Power Magazine
+- Utility Dive
+- Renewable Energy World
+- Energy Storage News
+
+Sources are selected for their focus on policy-relevant developments, 
+regulatory changes, and infrastructure initiatives of national significance.
 
 ---
 
