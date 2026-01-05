@@ -111,6 +111,15 @@ Only metadata and short excerpts are stored. All entries link to original source
 
 ---
 
+## Citing This Project
+
+If referencing Energy-Intel in academic, policy, or professional work, please cite:
+
+Energy-Intel: U.S. Energy Policy Intelligence Platform  
+https://energy-intel.org
+
+---
+
 ## Project Structure
 
 ```
