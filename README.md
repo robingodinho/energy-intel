@@ -1,4 +1,5 @@
-# Energy-Intel: U.S. Energy Policy Intelligence Platform (Next.js 14)
+# Energy-Intel: U.S. Energy Policy Intelligence Platform
+
 
 ## Overview
 
@@ -23,32 +24,16 @@ Rather than reacting to user traffic, Energy-Intel operates as a **pre-processed
 To support U.S. energy policy formulation and infrastructure decision-making by providing a centralized, AI-driven intelligence platform that delivers timely, authoritative references to energy policies, regulatory actions, and sector-critical developments of national interest.
 
 **Policy Gap Addressed:**  
-Energy-related information is often:
-- Fragmented across agencies and publications
-- Released faster than traditional policy analysis cycles
-- Difficult to synthesize at scale
-
-Energy-Intel addresses this gap by **automating ingestion and synthesis**, allowing policymakers and analysts to focus on interpretation rather than information discovery.
+Energy-related information is often fragmented across agencies, released faster than traditional analysis cycles, and difficult to synthesize at scale. Energy-Intel addresses this gap by automating ingestion and synthesis.
 
 ---
 
 ## Core Design Goals
 
-1. **Timeliness**
-   - Near real-time ingestion of official energy policy sources
-   - Scheduled updates independent of user activity
-
-2. **Reliability**
-   - Stable feeds even when upstream sources fluctuate
-   - Pre-processed data ensures consistent availability
-
-3. **Cost-Efficient AI Usage**
-   - AI summarization runs once per article
-   - No AI calls during page render or user interaction
-
-4. **Policy-Ready Clarity**
-   - Summaries emphasize regulatory impact and national relevance
-   - Clean architecture for transparency and reviewability
+1. **Timeliness** – Scheduled ingestion of official policy sources  
+2. **Reliability** – Stable feeds independent of user traffic  
+3. **Cost Control** – AI runs once per article, never at render time  
+4. **Clarity** – Policy-focused summaries and clean architecture  
 
 ---
 
@@ -66,7 +51,7 @@ Policy-Ready Database Storage
         ↓
 Fast Read-Only API
         ↓
-Web Interface (Instant Load)
+Frontend Feed (Instant Load)
 ```
 
 ---
@@ -74,21 +59,22 @@ Web Interface (Instant Load)
 ## Technology Stack
 
 ### Frontend
-- **Next.js 14.x** (App Router)
+- Next.js 14.x (App Router)
 - TypeScript
 - Tailwind CSS
 
 ### Backend
 - Next.js Serverless API Routes
-- Scheduled ingestion via **Vercel Cron**
+- Vercel Cron (scheduled ingestion)
 
 ### Data & Storage
 - Supabase Postgres
-- Indexed for fast reads, sorting, and filtering
+- Indexed single-table design
 
-### AI Capabilities
-- OpenAI API (model configurable via environment variables)
-- Policy-focused summarization and topic classification
+### AI
+- OpenAI API
+- Model configurable via environment variables
+- Summaries emphasize regulatory impact and national relevance
 
 ### Deployment
 - Vercel (free-tier compatible)
@@ -97,11 +83,96 @@ Web Interface (Instant Load)
 
 ## Data Sources
 
-Energy-Intel ingests data exclusively from **authoritative, official U.S. government sources**, including:
+Energy-Intel ingests data exclusively from **authoritative U.S. government sources**:
 - Federal Energy Regulatory Commission (FERC)
 - Environmental Protection Agency (EPA)
 - Department of Energy (DOE)
 - Energy Information Administration (EIA)
+
+Only metadata and short excerpts are stored. All entries link to original sources.
+
+---
+
+## Project Structure
+
+```
+energy-intel/
+├── app/
+│   ├── api/
+│   │   ├── ingest/           # Scheduled ingestion (cron)
+│   │   │   └── route.ts
+│   │   └── articles/         # Read-only policy feed API
+│   │       └── route.ts
+│   ├── layout.tsx
+│   └── page.tsx
+│
+├── components/
+│   └── ArticleCard.tsx
+│
+├── lib/
+│   ├── feeds.ts              # Official policy source definitions
+│   ├── ingest.ts             # Shared ingestion pipeline
+│   ├── summarize.ts          # AI policy summarization logic
+│   ├── categorize.ts         # Topic & policy classification
+│   └── db.ts                 # Supabase client
+│
+├── types/
+│   └── article.ts
+│
+├── .env.local
+├── vercel.json               # Cron configuration
+├── package.json
+└── README.md
+```
+
+---
+
+## Key Engineering Decisions
+
+### 1) No AI Calls During User Requests
+AI processing occurs **ahead of time**, ensuring:
+- Fast page loads
+- Predictable AI costs
+- No runtime AI dependency
+
+### 2) Scheduled Ingestion
+A cron-triggered pipeline fetches and processes policy updates on a fixed schedule.
+
+### 3) Minimal, Transparent Data Model
+A single `articles` table supports deduplication, historical tracking, and fast filtering.
+
+### 4) Separation of Concerns
+- Ingestion ≠ Serving
+- AI logic ≠ UI logic
+- Storage ≠ Presentation
+
+---
+
+## Version Pinning (Next.js 14.x)
+
+```json
+{
+  "dependencies": {
+    "next": "14.2.0",
+    "react": "^18",
+    "react-dom": "^18"
+  }
+}
+```
+
+---
+
+## Environment Variables
+
+Create `.env.local`:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o-mini
+
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
 ---
 
@@ -112,8 +183,44 @@ npm install
 npm run dev
 ```
 
+Open http://localhost:3000
+
+---
+
+## Deployment (Vercel)
+
+1. Push repo to GitHub  
+2. Import into Vercel  
+3. Set environment variables  
+4. Configure cron in `vercel.json`
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/ingest",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}
+```
+
+---
+
+## Performance Characteristics
+
+- Instant page loads (DB reads only)
+- Low API latency
+- Flat AI cost profile
+- Scales cleanly with users
+
 ---
 
 ## Purpose & Evaluation Context
 
-Energy-Intel is a **live, verifiable system** demonstrating applied expertise in AI-powered regulatory intelligence, energy policy monitoring, and cost-aware data engineering.
+Energy-Intel is a **live, verifiable system** demonstrating applied expertise in:
+- Energy policy intelligence systems
+- AI-assisted regulatory monitoring
+- Cost-aware, production-grade AI pipelines
+
+Designed for professional, academic, and policy-focused evaluation.
