@@ -34,3 +34,5 @@ import Image from 'next/image';
 - Use lowercase letters
 - Replace spaces with hyphens (-)
 - Examples: `hero-banner.jpg`, `team-photo.png`, `feature-1.webp`
+
+

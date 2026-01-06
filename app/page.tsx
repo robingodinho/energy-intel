@@ -1,11 +1,20 @@
 import { Suspense } from 'react';
+import { unstable_noStore as noStore } from 'next/cache';
 import { getArticles } from '@/lib/getArticles';
 import { ArticleCard, HeroArticleCard } from '@/components/ArticleCard';
 import { CategoryChips } from '@/components/CategoryChips';
 import { ArticleCategory } from '@/types/article';
 
 // Force dynamic rendering - always fetch fresh data from Supabase
+// This tells Next.js to never statically generate this page
 export const dynamic = 'force-dynamic';
+
+// Disable fetch caching for this route segment
+// This ensures data fetches are always fresh
+export const fetchCache = 'force-no-store';
+
+// Disable full route caching
+export const revalidate = 0;
 
 interface PageProps {
   searchParams: { category?: string };
@@ -19,11 +28,25 @@ interface PageProps {
  * - Hero section with most recent article
  * - Category filter chips
  * - Responsive grid of article cards
+ * 
+ * CACHING STRATEGY:
+ * This page is configured to be fully dynamic with no caching:
+ * 1. `dynamic = 'force-dynamic'` - Disables static generation
+ * 2. `fetchCache = 'force-no-store'` - Disables fetch caching
+ * 3. `revalidate = 0` - Disables ISR/time-based revalidation
+ * 4. `noStore()` - Opts out of static rendering at runtime
+ * 
+ * This ensures that when the cron job ingests new articles, the homepage
+ * immediately shows the fresh content without needing to wait for cache expiry.
  */
 export default async function DiscoverPage({ searchParams }: PageProps) {
+  // Explicitly opt out of caching at runtime
+  // This is a belt-and-suspenders approach to ensure fresh data
+  noStore();
+
   const category = searchParams.category as ArticleCategory | undefined;
   
-  // Fetch articles from Supabase
+  // Fetch articles from Supabase - this will always be fresh due to noStore()
   const { articles, error } = await getArticles({ 
     category: category || undefined,
     limit: 50 
