@@ -36,3 +36,4 @@ import Image from 'next/image';
 - Examples: `hero-banner.jpg`, `team-photo.png`, `feature-1.webp`
 
 
+

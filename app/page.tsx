@@ -1,19 +1,14 @@
 import { Suspense } from 'react';
 import { unstable_noStore as noStore } from 'next/cache';
 import { getArticles } from '@/lib/getArticles';
-import { ArticleCard, HeroArticleCard } from '@/components/ArticleCard';
+import { ArticleCard, LargeArticleCard } from '@/components/ArticleCard';
 import { CategoryChips } from '@/components/CategoryChips';
-import { ArticleCategory } from '@/types/article';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
+import { ArticleCategory, ArticleRow } from '@/types/article';
 
 // Force dynamic rendering - always fetch fresh data from Supabase
-// This tells Next.js to never statically generate this page
 export const dynamic = 'force-dynamic';
-
-// Disable fetch caching for this route segment
-// This ensures data fetches are always fresh
 export const fetchCache = 'force-no-store';
-
-// Disable full route caching
 export const revalidate = 0;
 
 interface PageProps {
@@ -21,57 +16,91 @@ interface PageProps {
 }
 
 /**
+ * Groups articles into the repeating pattern:
+ * - Row 1: 1 large article (image right)
+ * - Row 2: 3 medium articles
+ * - Row 3: 1 large article (image left)
+ * 
+ * Each "pattern group" consumes 5 articles total.
+ */
+function groupArticlesIntoPattern(articles: ArticleRow[]) {
+  const groups: Array<{
+    type: 'large-right' | 'medium-row' | 'large-left';
+    articles: ArticleRow[];
+  }> = [];
+
+  let index = 0;
+  let patternStep = 0; // 0 = large-right, 1 = medium-row, 2 = large-left
+
+  while (index < articles.length) {
+    if (patternStep === 0) {
+      // Large article - image on right
+      groups.push({
+        type: 'large-right',
+        articles: [articles[index]],
+      });
+      index += 1;
+      patternStep = 1;
+    } else if (patternStep === 1) {
+      // 3 medium articles
+      const mediumArticles = articles.slice(index, index + 3);
+      if (mediumArticles.length > 0) {
+        groups.push({
+          type: 'medium-row',
+          articles: mediumArticles,
+        });
+        index += mediumArticles.length;
+      }
+      patternStep = 2;
+    } else if (patternStep === 2) {
+      // Large article - image on left
+      groups.push({
+        type: 'large-left',
+        articles: [articles[index]],
+      });
+      index += 1;
+      patternStep = 0; // Reset pattern
+    }
+  }
+
+  return groups;
+}
+
+/**
  * Discover Page
  * 
  * Main feed page showing energy policy articles from various sources.
- * Features:
- * - Hero section with most recent article
- * - Category filter chips
- * - Responsive grid of article cards
  * 
- * CACHING STRATEGY:
- * This page is configured to be fully dynamic with no caching:
- * 1. `dynamic = 'force-dynamic'` - Disables static generation
- * 2. `fetchCache = 'force-no-store'` - Disables fetch caching
- * 3. `revalidate = 0` - Disables ISR/time-based revalidation
- * 4. `noStore()` - Opts out of static rendering at runtime
- * 
- * This ensures that when the cron job ingests new articles, the homepage
- * immediately shows the fresh content without needing to wait for cache expiry.
+ * Layout Pattern (repeating):
+ * - Row 1: Large featured article (summary left, image right)
+ * - Row 2: 3 medium articles (image top, text below)
+ * - Row 3: Large featured article (image left, summary right)
  */
 export default async function DiscoverPage({ searchParams }: PageProps) {
-  // Explicitly opt out of caching at runtime
-  // This is a belt-and-suspenders approach to ensure fresh data
   noStore();
 
   const category = searchParams.category as ArticleCategory | undefined;
   
-  // Fetch articles from Supabase - this will always be fresh due to noStore()
   const { articles, error } = await getArticles({ 
     category: category || undefined,
     limit: 50 
   });
 
-  // Get hero article (first/most recent)
-  const heroArticle = articles[0];
-  // Get remaining articles for the grid
-  const gridArticles = articles.slice(1);
+  const articleGroups = groupArticlesIntoPattern(articles);
 
   return (
     <div className="min-h-screen bg-zinc-950">
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <h1 className="text-xl font-bold text-zinc-100">Energy Intel</h1>
-            <div className="flex items-center gap-4">
-              <a 
-                href="/about" 
-                className="px-4 py-2 text-sm font-medium text-zinc-400 bg-zinc-800/50 rounded-lg 
-                         hover:bg-zinc-700 hover:text-zinc-100 transition-all duration-200"
-              >
-                About
-              </a>
+          <div className="relative flex items-center justify-center h-16">
+            {/* Centered Logo */}
+            <h1 className="text-3xl font-semibold text-zinc-100 font-sora tracking-tight">
+              Energy Intel
+            </h1>
+            {/* Hamburger Menu - Absolute positioned to the right */}
+            <div className="absolute right-0">
+              <HamburgerMenu />
             </div>
           </div>
         </div>
@@ -93,33 +122,60 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
         </div>
 
         {/* Category Filters */}
-        <section className="mb-8 flex justify-center">
+        <section className="mb-10 flex justify-center">
           <Suspense fallback={<div className="h-10 bg-zinc-800/50 rounded-full animate-pulse w-96" />}>
             <CategoryChips />
           </Suspense>
         </section>
 
-        {/* Hero Article */}
-        {heroArticle && (
-          <section className="mb-12">
-            <HeroArticleCard article={heroArticle} />
+        {/* Article Layout - Repeating Pattern */}
+        {articleGroups.length > 0 ? (
+          <section className="space-y-8">
+            {articleGroups.map((group, groupIndex) => {
+              if (group.type === 'large-right') {
+                return (
+                  <div key={`large-right-${groupIndex}`}>
+                    <LargeArticleCard 
+                      article={group.articles[0]} 
+                      imagePosition="right"
+                      priority={groupIndex === 0}
+                    />
+                  </div>
+                );
+              }
+              
+              if (group.type === 'medium-row') {
+                return (
+                  <div 
+                    key={`medium-${groupIndex}`} 
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    {group.articles.map((article, idx) => (
+                      <ArticleCard 
+                        key={article.id} 
+                        article={article} 
+                        priority={groupIndex < 2 && idx < 3}
+                      />
+                    ))}
+                  </div>
+                );
+              }
+              
+              if (group.type === 'large-left') {
+                return (
+                  <div key={`large-left-${groupIndex}`}>
+                    <LargeArticleCard 
+                      article={group.articles[0]} 
+                      imagePosition="left"
+                    />
+                  </div>
+                );
+              }
+              
+              return null;
+            })}
           </section>
-        )}
-
-        {/* Articles Grid */}
-        {gridArticles.length > 0 ? (
-          <section>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {gridArticles.map((article, index) => (
-                <ArticleCard 
-                  key={article.id} 
-                  article={article} 
-                  priority={index < 4} // Prioritize first 4 images
-                />
-              ))}
-            </div>
-          </section>
-        ) : !heroArticle ? (
+        ) : (
           <div className="text-center py-20">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800 mb-4">
               <svg className="w-8 h-8 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +190,7 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
                 : 'Run the ingestion to populate articles.'}
             </p>
           </div>
-        ) : null}
+        )}
 
         {/* Footer Stats */}
         <footer className="mt-16 pt-8 border-t border-zinc-800/50 text-center text-sm text-zinc-500">
