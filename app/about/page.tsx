@@ -4,23 +4,34 @@ import Image from 'next/image';
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-50">
-      {/* Header */}
+      {/* Header - Matching main feed page */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link 
-              href="/"
-              className="text-xl font-bold text-zinc-100 hover:text-cyan-400 transition-colors"
-            >
-              Energy Intel
+          <div className="relative flex items-center justify-center h-20">
+            {/* Logo - Absolute positioned to the left */}
+            <Link href="/" className="absolute left-0">
+              <img 
+                src="/logo/logo.png" 
+                alt="Energy Intel Logo" 
+                className="h-16 w-auto hover:opacity-80 transition-opacity"
+              />
             </Link>
-            <Link 
-              href="/"
-              className="px-4 py-2 text-sm font-medium text-zinc-400 bg-zinc-800/50 rounded-lg 
-                       hover:bg-zinc-700 hover:text-zinc-100 transition-all duration-200"
-            >
-              Back to Feed
+            {/* Centered Title */}
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <h1 className="text-3xl font-semibold text-zinc-100 font-sora tracking-tight">
+                Energy Intel
+              </h1>
             </Link>
+            {/* Back Button - Absolute positioned to the right */}
+            <div className="absolute right-0">
+              <Link 
+                href="/"
+                className="px-4 py-2 text-sm font-medium text-zinc-400 bg-zinc-800/50 rounded-lg 
+                         hover:bg-zinc-700 hover:text-zinc-100 transition-all duration-200"
+              >
+                ← Back to Feed
+              </Link>
+            </div>
           </div>
         </div>
       </header>

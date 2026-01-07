@@ -130,3 +130,29 @@ a, button, input, textarea, select {
 .article-card-wrapper:hover::before {
   animation: rotate-border 2.5s ease-out both;
 }
+
+/* Text shine animation */
+@keyframes text-shine {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+.text-shine {
+  background: linear-gradient(
+    90deg,
+    rgba(161, 161, 170, 1) 0%,
+    rgba(161, 161, 170, 1) 40%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(161, 161, 170, 1) 60%,
+    rgba(161, 161, 170, 1) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shine 3s ease-in-out forwards;
+}

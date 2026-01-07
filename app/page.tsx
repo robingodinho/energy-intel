@@ -4,6 +4,7 @@ import { getArticles } from '@/lib/getArticles';
 import { ArticleCard, LargeArticleCard } from '@/components/ArticleCard';
 import { CategoryChips } from '@/components/CategoryChips';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
+import { PageWrapper } from '@/components/PageWrapper';
 import { ArticleCategory, ArticleRow } from '@/types/article';
 
 // Force dynamic rendering - always fetch fresh data from Supabase
@@ -89,8 +90,9 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
   const articleGroups = groupArticlesIntoPattern(articles);
 
   return (
-    <div className="min-h-screen bg-zinc-950">
-      {/* Header */}
+    <PageWrapper>
+      <div className="min-h-screen bg-zinc-950">
+        {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex items-center justify-center h-20">
@@ -208,6 +210,7 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
           </p>
         </footer>
       </main>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }
