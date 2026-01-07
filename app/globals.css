@@ -72,18 +72,24 @@ a, button, input, textarea, select {
   transition-property: color, background-color, border-color, box-shadow, transform, opacity;
 }
 
-/* Animated border effect for article cards - browser compatible version */
-@keyframes rotate-glow {
+/* Animated border effect for article cards */
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rotate-border {
   0% {
-    transform: rotate(0deg);
+    --border-angle: 0deg;
     opacity: 1;
   }
   80% {
-    transform: rotate(288deg);
+    --border-angle: 288deg;
     opacity: 1;
   }
   100% {
-    transform: rotate(360deg);
+    --border-angle: 360deg;
     opacity: 0;
   }
 }
@@ -91,30 +97,36 @@ a, button, input, textarea, select {
 .article-card-wrapper {
   position: relative;
   border-radius: 1rem;
-  isolation: isolate;
+  background: transparent;
 }
 
 .article-card-wrapper::before {
   content: "";
   position: absolute;
-  inset: -2px;
+  inset: 0;
   border-radius: 1rem;
+  padding: 1px;
   background: conic-gradient(
-    from 0deg,
-    transparent 0%,
-    transparent 55%,
-    rgba(180, 180, 180, 0.15) 65%,
-    rgba(210, 210, 210, 0.4) 75%,
-    rgba(255, 255, 255, 0.7) 85%,
-    rgba(210, 210, 210, 0.4) 92%,
+    from var(--border-angle),
+    transparent 60%,
+    rgba(192, 192, 192, 0.1) 70%,
+    rgba(220, 220, 220, 0.5) 80%,
+    rgba(255, 255, 255, 0.8) 90%,
+    rgba(220, 220, 220, 0.5) 95%,
     transparent 100%
   );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   opacity: 0;
-  z-index: -1;
-  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
 .article-card-wrapper:hover::before {
-  opacity: 1;
-  animation: rotate-glow 2.5s linear forwards;
+  animation: rotate-border 2.5s ease-out both;
 }

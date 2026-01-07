@@ -93,8 +93,16 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-16">
-            {/* Centered Logo */}
+          <div className="relative flex items-center justify-center h-20">
+            {/* Logo - Absolute positioned to the left */}
+            <div className="absolute left-0">
+              <img 
+                src="/logo/logo.png" 
+                alt="Energy Intel Logo" 
+                className="h-16 w-auto"
+              />
+            </div>
+            {/* Centered Title */}
             <h1 className="text-3xl font-semibold text-zinc-100 font-sora tracking-tight">
               Energy Intel
             </h1>
