@@ -78,6 +78,9 @@ export async function insertArticles(
   return { inserted, errors };
 }
 
+// Finance sources to exclude from main feed
+const FINANCE_SOURCES = ['Yahoo Finance', 'CNBC Energy'];
+
 /**
  * Fetch articles from the database
  * 
@@ -87,6 +90,7 @@ export async function insertArticles(
 export async function fetchArticles(options?: {
   category?: string;
   limit?: number;
+  includeFinance?: boolean;
 }): Promise<{ data: ArticleRow[]; error: string | null }> {
   const supabase = getSupabase();
   
@@ -101,6 +105,13 @@ export async function fetchArticles(options?: {
 
   if (options?.limit) {
     query = query.limit(options.limit);
+  }
+
+  // Exclude finance sources from main feed by default
+  if (!options?.includeFinance) {
+    for (const source of FINANCE_SOURCES) {
+      query = query.neq('source', source);
+    }
   }
 
   const { data, error } = await query;
@@ -165,4 +176,39 @@ export async function getExistingArticleIds(ids: string[]): Promise<Set<string>>
   }
 
   return new Set(data?.map(row => row.id) || []);
+}
+
+/**
+ * Check which article titles already exist in the database
+ * Used for title-based deduplication to catch articles with different IDs but same content
+ * 
+ * @param titles - Array of article titles to check
+ * @returns Set of titles that already exist (normalized to lowercase)
+ */
+export async function getExistingArticleTitles(titles: string[]): Promise<Set<string>> {
+  if (titles.length === 0) {
+    return new Set();
+  }
+
+  const supabase = getSupabase();
+  
+  // Normalize titles for comparison
+  const normalizedTitles = titles.map(t => t.toLowerCase().trim());
+  
+  // Fetch recent articles (last 7 days) to check for title matches
+  // This avoids loading the entire article database
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  
+  const { data, error } = await supabase
+    .from('articles')
+    .select('title')
+    .gte('pub_date', sevenDaysAgo);
+
+  if (error) {
+    console.error('Error checking existing article titles:', error);
+    return new Set();
+  }
+
+  // Return normalized titles for comparison
+  return new Set(data?.map(row => row.title.toLowerCase().trim()) || []);
 }

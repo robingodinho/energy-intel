@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 export default function AboutPage() {
   return (
@@ -22,15 +23,9 @@ export default function AboutPage() {
                 Energy Intel
               </h1>
             </Link>
-            {/* Back Button - Absolute positioned to the right */}
+            {/* Hamburger Menu - Absolute positioned to the right */}
             <div className="absolute right-0">
-              <Link 
-                href="/"
-                className="px-4 py-2 text-sm font-medium text-zinc-400 bg-zinc-800/50 rounded-lg 
-                         hover:bg-zinc-700 hover:text-zinc-100 transition-all duration-200"
-              >
-                ← Back to Feed
-              </Link>
+              <HamburgerMenu />
             </div>
           </div>
         </div>
@@ -49,19 +44,6 @@ export default function AboutPage() {
             </p>
           </div>
 
-          {/* Hero Image Section - Uncomment when you add your image */}
-          {/* 
-          <div className="relative w-full h-64 sm:h-80 lg:h-96 rounded-xl overflow-hidden">
-            <Image 
-              src="/about-images/your-hero-image.jpg" 
-              alt="Energy Intel Platform"
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-          */}
-
           {/* About Content */}
           <div className="prose prose-invert max-w-none space-y-6">
             <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
@@ -71,18 +53,6 @@ export default function AboutPage() {
                 in real-time. We help energy professionals, policy analysts, and industry leaders stay informed about critical 
                 regulatory changes, market developments, and infrastructure initiatives that shape the American energy landscape.
               </p>
-              
-              {/* Mission Image - Uncomment when you add your image */}
-              {/* 
-              <div className="mt-6 relative w-full h-48 rounded-lg overflow-hidden">
-                <Image 
-                  src="/about-images/mission-image.jpg" 
-                  alt="Our Mission"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              */}
             </section>
 
             <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">

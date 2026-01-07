@@ -234,7 +234,8 @@ export async function GET(request: NextRequest) {
     try {
       revalidatePath('/');
       revalidatePath('/about');
-      console.log('[orchestrator] UI cache revalidated for / and /about');
+      revalidatePath('/finance');
+      console.log('[orchestrator] UI cache revalidated for /, /about, and /finance');
     } catch (revalidateError) {
       console.error('[orchestrator] Revalidation error (non-fatal):', revalidateError);
     }

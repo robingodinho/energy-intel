@@ -29,6 +29,7 @@ export type ArticleCategory =
  * - pub_date: TIMESTAMP NOT NULL
  * - source: TEXT NOT NULL
  * - category: TEXT NOT NULL
+ * - article_type: TEXT DEFAULT 'policy'
  * - image_url: TEXT NULL (OpenGraph/Twitter card image)
  * - created_at: TIMESTAMP DEFAULT NOW()
  */
@@ -40,6 +41,7 @@ export interface ArticleRow {
   pub_date: string;      // ISO 8601 timestamp string
   source: string;        // e.g., 'FERC', 'EPA', 'DOE', 'EIA'
   category: ArticleCategory;
+  article_type?: ArticleType; // 'policy' or 'finance'
   image_url?: string | null;  // OpenGraph/Twitter card image URL
   created_at: string;    // ISO 8601 timestamp string (auto-generated)
 }
@@ -79,11 +81,17 @@ export interface RawFeedItem {
 }
 
 /**
+ * Article type - distinguishes between policy news and finance news
+ */
+export type ArticleType = 'policy' | 'finance';
+
+/**
  * RSS feed source configuration
  */
 export interface FeedSource {
   name: string;          // Display name (e.g., 'FERC')
   url: string;           // RSS feed URL
   enabled: boolean;      // Whether to include in ingestion
+  articleType?: ArticleType; // Type of articles from this feed (default: 'policy')
 }
 

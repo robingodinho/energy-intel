@@ -1,5 +1,5 @@
 import Parser from 'rss-parser';
-import { RawFeedItem, FeedSource } from '@/types/article';
+import { RawFeedItem, FeedSource, ArticleType } from '@/types/article';
 
 // Check if we're in development mode
 const isDev = process.env.NODE_ENV !== 'production';
@@ -22,6 +22,7 @@ export interface FetchFeedResult {
   items: RawFeedItem[];
   error: string | null;
   fetchedAt: string;
+  articleType: ArticleType; // Type of articles from this feed
   // Diagnostic info (populated in dev mode)
   diagnostics?: {
     httpStatus?: number;
@@ -99,6 +100,7 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
         items: [],
         error: errorMsg,
         fetchedAt,
+        articleType: feed.articleType || 'policy',
         diagnostics,
       };
     }
@@ -120,6 +122,7 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
         items: [],
         error: errorMsg,
         fetchedAt,
+        articleType: feed.articleType || 'policy',
         diagnostics,
       };
     }
@@ -147,6 +150,7 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
         items,
         error: null,
         fetchedAt,
+        articleType: feed.articleType || 'policy',
         diagnostics,
       };
     } catch (parseErr) {
@@ -163,6 +167,7 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
         items: [],
         error: `Parse error: ${parseError}`,
         fetchedAt,
+        articleType: feed.articleType || 'policy',
         diagnostics,
       };
     }
@@ -176,6 +181,7 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
       items: [],
       error: errorMessage,
       fetchedAt,
+      articleType: feed.articleType || 'policy',
       diagnostics,
     };
   }

@@ -142,6 +142,43 @@ const INTERNATIONAL_SOURCES: FeedSource[] = [
 ];
 
 // =============================================================================
+// FINANCE & MARKET NEWS SOURCES
+// =============================================================================
+
+const FINANCE_SOURCES: FeedSource[] = [
+  {
+    name: 'Yahoo Finance',
+    url: 'https://finance.yahoo.com/news/rssindex',
+    enabled: true,
+    articleType: 'finance',
+    // ✅ Yahoo Finance RSS - General financial news
+    // Good coverage of market movements, earnings, economic data
+  },
+  {
+    name: 'CNBC Energy',
+    url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19836768',
+    enabled: true,
+    articleType: 'finance',
+    // ✅ CNBC Energy RSS - Energy sector financial news
+    // Focus: Oil prices, energy stocks, commodities
+  },
+  {
+    name: 'Reuters Business',
+    url: 'https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best',
+    enabled: false,
+    articleType: 'finance',
+    // ❌ May require validation - Reuters business/sector news
+  },
+  {
+    name: 'MarketWatch Energy',
+    url: 'https://feeds.marketwatch.com/marketwatch/realtimeheadlines/',
+    enabled: false,
+    articleType: 'finance',
+    // ❌ May require validation - MarketWatch real-time headlines
+  },
+];
+
+// =============================================================================
 // COMBINED FEED LIST
 // =============================================================================
 
@@ -150,6 +187,7 @@ export const FEED_SOURCES: FeedSource[] = [
   ...TRADE_SOURCES,
   ...NEWS_SOURCES,
   ...INTERNATIONAL_SOURCES,
+  ...FINANCE_SOURCES,
 ];
 
 /**
@@ -176,7 +214,7 @@ export function getFeedByName(name: string): FeedSource | undefined {
 /**
  * Get feeds by category
  */
-export function getFeedsByCategory(category: 'government' | 'trade' | 'news' | 'international'): FeedSource[] {
+export function getFeedsByCategory(category: 'government' | 'trade' | 'news' | 'international' | 'finance'): FeedSource[] {
   switch (category) {
     case 'government':
       return GOVERNMENT_SOURCES;
@@ -186,7 +224,27 @@ export function getFeedsByCategory(category: 'government' | 'trade' | 'news' | '
       return NEWS_SOURCES;
     case 'international':
       return INTERNATIONAL_SOURCES;
+    case 'finance':
+      return FINANCE_SOURCES;
     default:
       return [];
   }
+}
+
+/**
+ * Get enabled feeds by article type
+ */
+export function getEnabledFeedsByType(articleType: 'policy' | 'finance'): FeedSource[] {
+  return FEED_SOURCES.filter((feed) => {
+    if (!feed.enabled) return false;
+    const feedType = feed.articleType || 'policy';
+    return feedType === articleType;
+  });
+}
+
+/**
+ * Get enabled finance feeds
+ */
+export function getEnabledFinanceFeeds(): FeedSource[] {
+  return getEnabledFeedsByType('finance');
 }

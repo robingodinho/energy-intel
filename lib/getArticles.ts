@@ -2,12 +2,55 @@ import { getSupabase } from './db';
 import { ArticleRow, ArticleCategory } from '@/types/article';
 
 /**
+ * Time range options for archive filtering
+ */
+export type TimeRange = 'latest' | '24h' | '7d' | '30d' | '90d';
+
+/**
  * Options for fetching articles
  */
 export interface GetArticlesOptions {
   category?: ArticleCategory | 'All';
   limit?: number;
   offset?: number;
+  includeFinance?: boolean; // Whether to include finance articles (default: false)
+  timeRange?: TimeRange; // Time range filter for archive
+}
+
+// Finance sources that should be excluded from main feed
+const FINANCE_SOURCES = ['Yahoo Finance', 'CNBC Energy'];
+
+/**
+ * Get date range boundaries based on time range option
+ */
+function getDateRange(timeRange: TimeRange): { start: Date; end: Date } | null {
+  const now = new Date();
+  
+  if (timeRange === 'latest') {
+    return null; // No filtering, show latest articles
+  }
+  
+  const end = now;
+  let start: Date;
+  
+  switch (timeRange) {
+    case '24h':
+      start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      return null;
+  }
+  
+  return { start, end };
 }
 
 /**
@@ -21,13 +64,13 @@ export interface GetArticlesResult {
 /**
  * Fetch articles from Supabase (server-side only)
  * 
- * @param options - Query options (category, limit, offset)
+ * @param options - Query options (category, limit, offset, includeFinance, timeRange)
  * @returns Articles sorted by pub_date DESC
  */
 export async function getArticles(
   options: GetArticlesOptions = {}
 ): Promise<GetArticlesResult> {
-  const { category, limit = 50, offset = 0 } = options;
+  const { category, limit = 25, offset = 0, includeFinance = false, timeRange = 'latest' } = options;
 
   try {
     const supabase = getSupabase();
@@ -41,6 +84,22 @@ export async function getArticles(
     // Apply category filter if specified and not "All"
     if (category && category !== 'All') {
       query = query.eq('category', category);
+    }
+
+    // Exclude finance sources from main feed by default
+    if (!includeFinance) {
+      // Filter out Yahoo Finance and CNBC Energy articles
+      for (const source of FINANCE_SOURCES) {
+        query = query.neq('source', source);
+      }
+    }
+
+    // Apply time range filter for archive
+    const dateRange = getDateRange(timeRange);
+    if (dateRange) {
+      query = query
+        .gte('pub_date', dateRange.start.toISOString())
+        .lte('pub_date', dateRange.end.toISOString());
     }
 
     const { data, error } = await query;

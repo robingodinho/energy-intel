@@ -58,6 +58,30 @@ export function HamburgerMenu() {
       >
         <nav className="py-2">
           <a
+            href="/"
+            className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 
+                       hover:bg-zinc-800 hover:text-cyan-400 transition-colors duration-200"
+            onClick={() => setIsOpen(false)}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Discover
+          </a>
+          <a
+            href="/finance"
+            className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 
+                       hover:bg-zinc-800 hover:text-cyan-400 transition-colors duration-200"
+            onClick={() => setIsOpen(false)}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
+                    d="M3 3v18h18M9 17V9m4 8v-5m4 5v-8" />
+            </svg>
+            Finance
+          </a>
+          <a
             href="/about"
             className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 
                        hover:bg-zinc-800 hover:text-cyan-400 transition-colors duration-200"
@@ -74,4 +98,3 @@ export function HamburgerMenu() {
     </div>
   );
 }
-

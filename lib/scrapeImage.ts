@@ -178,9 +178,24 @@ function extractSchemaImage(data: unknown): string | null {
 
 /**
  * Check if URL looks like a good content image (not icons, logos, etc.)
+ * 
+ * Note: We make exceptions for recognizable brand logos like Yahoo Finance
+ * since their articles often don't have specific images, and their logo
+ * is better than a generic placeholder.
  */
 function isLikelyGoodImage(url: string): boolean {
   const lowerUrl = url.toLowerCase();
+  
+  // Allow known brand default images (better than generic placeholders)
+  const allowedBrandImages = [
+    'yimg.com',              // Yahoo Finance images/logos
+    's.yimg.com',            // Yahoo CDN
+    'yahoo_finance',         // Yahoo Finance branded images
+  ];
+  
+  for (const brand of allowedBrandImages) {
+    if (lowerUrl.includes(brand)) return true;
+  }
   
   // Skip common non-content images
   const skipPatterns = [

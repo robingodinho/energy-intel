@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { unstable_noStore as noStore } from 'next/cache';
-import { getArticles } from '@/lib/getArticles';
+import { getArticles, TimeRange } from '@/lib/getArticles';
 import { ArticleCard, LargeArticleCard } from '@/components/ArticleCard';
 import { CategoryChips } from '@/components/CategoryChips';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
@@ -13,7 +13,7 @@ export const fetchCache = 'force-no-store';
 export const revalidate = 0;
 
 interface PageProps {
-  searchParams: { category?: string };
+  searchParams: { category?: string; archive?: string };
 }
 
 /**
@@ -81,13 +81,16 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
   noStore();
 
   const category = searchParams.category as ArticleCategory | undefined;
+  const archive = searchParams.archive as TimeRange | undefined;
   
   const { articles, error } = await getArticles({ 
     category: category || undefined,
-    limit: 50 
+    timeRange: archive || 'latest',
+    limit: 25 
   });
 
   const articleGroups = groupArticlesIntoPattern(articles);
+  const isArchiveView = !!archive;
 
   return (
     <PageWrapper>
@@ -124,11 +127,11 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
           </div>
         )}
 
-        {/* Slogan */}
+        {/* Page Title */}
         <div className="text-center mb-6">
-          <p className="text-lg sm:text-xl text-zinc-400 font-light tracking-wide">
-            AI-Driven Intelligence for Energy Policy and Infrastructure.
-          </p>
+          <h2 className="text-2xl font-semibold text-zinc-100">
+            Discover
+          </h2>
         </div>
 
         {/* Category Filters */}
@@ -207,6 +210,7 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
           <p>
             Showing {articles.length} article{articles.length !== 1 ? 's' : ''}
             {category ? ` in ${category}` : ''}
+            {isArchiveView ? ` from archive` : ''}
           </p>
         </footer>
       </main>

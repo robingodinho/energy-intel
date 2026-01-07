@@ -1,11 +1,13 @@
 import { createHash } from 'crypto';
-import { RawFeedItem, ArticleInsert } from '@/types/article';
+import { RawFeedItem, ArticleInsert, ArticleType } from '@/types/article';
 import { categorizeArticle } from './categorize';
 
 /**
  * Normalized article without summary (summary added later by AI)
  */
-export type PartialArticle = Omit<ArticleInsert, 'summary'>;
+export type PartialArticle = Omit<ArticleInsert, 'summary'> & {
+  article_type?: ArticleType;
+};
 
 /**
  * Generate a stable unique ID for an article
@@ -68,11 +70,13 @@ export function parsePublicationDate(item: RawFeedItem): string {
  * 
  * @param item - Raw feed item from RSS parser
  * @param source - Source name (e.g., 'FERC', 'EPA')
+ * @param articleType - Type of article ('policy' or 'finance')
  * @returns Partial article ready for categorization and summarization
  */
 export function normalizeFeedItem(
   item: RawFeedItem,
-  source: string
+  source: string,
+  articleType: ArticleType = 'policy'
 ): PartialArticle | null {
   // Skip items without title or link
   if (!item.title?.trim() || !item.link?.trim()) {
@@ -90,6 +94,7 @@ export function normalizeFeedItem(
     pub_date: parsePublicationDate(item),
     source,
     category: categorizeArticle(title, content),
+    article_type: articleType,
   };
 }
 
@@ -98,14 +103,16 @@ export function normalizeFeedItem(
  * 
  * @param items - Raw feed items
  * @param source - Source name
+ * @param articleType - Type of article ('policy' or 'finance')
  * @returns Array of partial articles (nulls filtered out)
  */
 export function normalizeFeedItems(
   items: RawFeedItem[],
-  source: string
+  source: string,
+  articleType: ArticleType = 'policy'
 ): PartialArticle[] {
   return items
-    .map((item) => normalizeFeedItem(item, source))
+    .map((item) => normalizeFeedItem(item, source, articleType))
     .filter((article): article is PartialArticle => article !== null);
 }
 

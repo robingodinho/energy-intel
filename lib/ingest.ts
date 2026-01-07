@@ -1,7 +1,7 @@
 import { getEnabledFeeds } from './feeds';
 import { fetchAllFeeds, getFetchStats, FetchFeedResult } from './fetchFeed';
 import { normalizeFeedItems, PartialArticle } from './normalizeFeedItem';
-import { insertArticles, getExistingArticleIds, ArticleInsert } from './db';
+import { insertArticles, getExistingArticleIds, getExistingArticleTitles, ArticleInsert } from './db';
 import { ArticleCategory } from '@/types/article';
 import { summarizeArticle, isOpenAIConfigured, getFallbackSummary } from './summarize';
 
@@ -118,8 +118,8 @@ function processFeedResult(result: FetchFeedResult): {
     return { articles: [], skipped: 0, skipReasons: [] };
   }
 
-  // Normalize raw items
-  const normalized = normalizeFeedItems(result.items, result.source);
+  // Normalize raw items (passing articleType from feed source)
+  const normalized = normalizeFeedItems(result.items, result.source, result.articleType);
   
   // Validate articles
   const articles: PartialArticle[] = [];
@@ -219,12 +219,50 @@ export async function runIngestion(): Promise<IngestionStats> {
     tokensUsed: 0,
   };
 
-  // Check which articles already exist (to avoid re-summarizing duplicates)
-  const allIds = allPartialArticles.map(a => a.id);
-  const existingIds = await getExistingArticleIds(allIds);
-  const newArticles = allPartialArticles.filter(a => !existingIds.has(a.id));
+  // ==========================================
+  // DEDUPLICATION: ID-based + Title-based
+  // ==========================================
   
-  devLog(`Found ${existingIds.size} existing articles, ${newArticles.length} are new`);
+  // Step 1: Deduplicate within current batch by title (keep first occurrence)
+  const seenTitles = new Set<string>();
+  const batchDeduped = allPartialArticles.filter(article => {
+    const normalizedTitle = article.title.toLowerCase().trim();
+    if (seenTitles.has(normalizedTitle)) {
+      devLog(`Skipping duplicate title in batch: "${article.title.slice(0, 40)}..."`);
+      return false;
+    }
+    seenTitles.add(normalizedTitle);
+    return true;
+  });
+  
+  if (batchDeduped.length < allPartialArticles.length) {
+    devLog(`Removed ${allPartialArticles.length - batchDeduped.length} duplicates within batch`);
+  }
+
+  // Step 2: Check which article IDs already exist in database
+  const allIds = batchDeduped.map(a => a.id);
+  const existingIds = await getExistingArticleIds(allIds);
+  const afterIdDedup = batchDeduped.filter(a => !existingIds.has(a.id));
+  
+  devLog(`Found ${existingIds.size} existing IDs, ${afterIdDedup.length} remain after ID dedup`);
+
+  // Step 3: Check for duplicate titles in database (catches same article with different ID)
+  const remainingTitles = afterIdDedup.map(a => a.title);
+  const existingTitles = await getExistingArticleTitles(remainingTitles);
+  const newArticles = afterIdDedup.filter(article => {
+    const normalizedTitle = article.title.toLowerCase().trim();
+    if (existingTitles.has(normalizedTitle)) {
+      devLog(`Skipping article with existing title: "${article.title.slice(0, 40)}..."`);
+      return false;
+    }
+    return true;
+  });
+  
+  if (newArticles.length < afterIdDedup.length) {
+    devLog(`Removed ${afterIdDedup.length - newArticles.length} articles with duplicate titles in database`);
+  }
+  
+  devLog(`Final count: ${newArticles.length} new unique articles to process`);
 
   // Generate summaries for new articles
   const summaryMap = new Map<string, string>();
