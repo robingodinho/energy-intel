@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { unstable_noStore as noStore } from 'next/cache';
+import Image from 'next/image';
 import { getArticles, TimeRange } from '@/lib/getArticles';
 import { ArticleCard, LargeArticleCard } from '@/components/ArticleCard';
 import { CategoryChips } from '@/components/CategoryChips';
@@ -101,9 +102,11 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
           <div className="relative flex items-center justify-center h-20">
             {/* Logo - Absolute positioned to the left */}
             <div className="absolute left-0">
-              <img 
+              <Image 
                 src="/logo/logo.png" 
                 alt="Energy Intel Logo" 
+                width={64}
+                height={64}
                 className="h-16 w-auto"
               />
             </div>

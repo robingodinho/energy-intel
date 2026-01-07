@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 // Types for API responses
@@ -143,7 +144,8 @@ function MiniLineChart({
     const areaD = `${pathD} L ${points[points.length - 1].x.toFixed(1)} 40 L 0 40 Z`;
     
     return { pathD, areaD };
-  }, [isPositive, symbol, priceHistory]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPositive, priceHistory]);
   
   // Use unique gradient IDs per instance to avoid conflicts
   const gradientId = `gradient-${symbol}-${isPositive ? 'up' : 'down'}`;
@@ -264,9 +266,11 @@ export default function FinancePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex items-center justify-center h-20">
             <Link href="/" className="absolute left-0">
-              <img 
+              <Image 
                 src="/logo/logo.png" 
                 alt="Energy Intel Logo" 
+                width={64}
+                height={64}
                 className="h-16 w-auto hover:opacity-80 transition-opacity"
               />
             </Link>
@@ -292,9 +296,11 @@ export default function FinancePage() {
               className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg
                        hover:bg-zinc-800 transition-colors duration-200"
             >
-              <img 
+              <Image 
                 src="/finance/united_states.png"
                 alt="US Flag"
+                width={24}
+                height={16}
                 className="w-6 h-4 object-cover rounded-sm"
               />
               <span className="text-zinc-100 font-medium">
@@ -318,7 +324,7 @@ export default function FinancePage() {
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800 transition-colors
                             ${selectedMarket === 'US' ? 'text-cyan-400' : 'text-zinc-300'}`}
                 >
-                  <img src="/finance/united_states.png" alt="US Flag" className="w-6 h-4 object-cover rounded-sm" />
+                  <Image src="/finance/united_states.png" alt="US Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
                   <span>US Markets</span>
                   {selectedMarket === 'US' && (
                     <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
@@ -479,6 +485,7 @@ export default function FinancePage() {
                               <div className={`w-full h-full flex items-center justify-center ${
                                 isLogo ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 p-6' : ''
                               }`}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img 
                                   src={displayImage} 
                                   alt={article.title}
