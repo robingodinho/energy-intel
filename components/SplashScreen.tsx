@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -33,9 +34,11 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                     ${phase === 'logo' ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}
         style={{ transitionDelay: '0ms' }}
       >
-        <img 
+        <Image 
           src="/logo/logo.png" 
           alt="Energy Intel Logo" 
+          width={96}
+          height={96}
           className="h-24 w-auto mb-6"
         />
       </div>

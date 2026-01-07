@@ -139,27 +139,22 @@ export async function GET() {
 
     // Convert Map to object and cache in Supabase
     const historyMap: Record<string, PricePoint[]> = {};
-    const upsertPromises: Promise<any>[] = [];
     
     for (const [symbol, prices] of historyData) {
       historyMap[symbol] = prices;
       
       // Upsert to cache
-      upsertPromises.push(
-        supabase
-          .from('stock_price_history')
-          .upsert({
-            symbol,
-            prices: prices,
-            updated_at: now.toISOString(),
-          }, {
-            onConflict: 'symbol',
-          })
-      );
+      await supabase
+        .from('stock_price_history')
+        .upsert({
+          symbol,
+          prices: prices,
+          updated_at: now.toISOString(),
+        }, {
+          onConflict: 'symbol',
+        });
     }
     
-    // Wait for all upserts
-    await Promise.all(upsertPromises);
     console.log(`[stock-history] Cached ${historyData.size} stock histories`);
 
     return NextResponse.json({
