@@ -192,7 +192,7 @@ function SourceIcon({ source }: { source: string }) {
 export default function FinancePage() {
   const [selectedMarket, setSelectedMarket] = useState<Market>('US');
   const [marketDropdownOpen, setMarketDropdownOpen] = useState(false);
-  const [expandedSummaries, setExpandedSummaries] = useState<Set<number>>(new Set([1]));
+  const [expandedSummaries, setExpandedSummaries] = useState<Set<number>>(new Set());
   
   // Data states
   const [stocks, setStocks] = useState<Stock[]>(FALLBACK_STOCKS);
