@@ -215,39 +215,6 @@ export default function AboutPage() {
             </section>
 
             <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
-              <h2 className="text-2xl font-semibold text-cyan-400 mb-4">Technology Stack</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-zinc-300">
-                <div>
-                  <h3 className="font-semibold text-zinc-100 mb-2">Frontend</h3>
-                  <ul className="space-y-1 text-sm">
-                    <li>• Next.js 14 (App Router)</li>
-                    <li>• React 18</li>
-                    <li>• Tailwind CSS</li>
-                    <li>• TypeScript</li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-zinc-100 mb-2">Backend & Database</h3>
-                  <ul className="space-y-1 text-sm">
-                    <li>• Supabase (PostgreSQL)</li>
-                    <li>• Vercel (Hosting & Cron)</li>
-                    <li>• RSS Feed Parsing</li>
-                    <li>• Server-side Caching</li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-zinc-100 mb-2">AI & APIs</h3>
-                  <ul className="space-y-1 text-sm">
-                    <li>• OpenAI GPT-4o-mini</li>
-                    <li>• Alpha Vantage (Stocks)</li>
-                    <li>• Exchange Rate API (Forex)</li>
-                    <li>• Image Scraping (OG Tags)</li>
-                  </ul>
-                </div>
-              </div>
-            </section>
-
-            <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
               <h2 className="text-2xl font-semibold text-cyan-400 mb-4">Data Sources</h2>
               <p className="text-zinc-300 mb-4">
                 We aggregate content from trusted sources in the energy sector:
@@ -291,6 +258,39 @@ export default function AboutPage() {
                 </div>
                 <div className="px-3 py-2 bg-cyan-900/30 rounded-lg text-cyan-300 border border-cyan-800/30">
                   OpenAI GPT-4o-mini
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
+              <h2 className="text-2xl font-semibold text-cyan-400 mb-4">Technology Stack</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-zinc-300">
+                <div>
+                  <h3 className="font-semibold text-zinc-100 mb-2">Frontend</h3>
+                  <ul className="space-y-1 text-sm">
+                    <li>• Next.js 14 (App Router)</li>
+                    <li>• React 18</li>
+                    <li>• Tailwind CSS</li>
+                    <li>• TypeScript</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-zinc-100 mb-2">Backend & Database</h3>
+                  <ul className="space-y-1 text-sm">
+                    <li>• Supabase (PostgreSQL)</li>
+                    <li>• Vercel (Hosting & Cron)</li>
+                    <li>• RSS Feed Parsing</li>
+                    <li>• Server-side Caching</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-zinc-100 mb-2">AI & APIs</h3>
+                  <ul className="space-y-1 text-sm">
+                    <li>• OpenAI GPT-4o-mini</li>
+                    <li>• Alpha Vantage (Stocks)</li>
+                    <li>• Exchange Rate API (Forex)</li>
+                    <li>• Image Scraping (OG Tags)</li>
+                  </ul>
                 </div>
               </div>
             </section>
