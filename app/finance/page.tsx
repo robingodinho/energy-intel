@@ -344,7 +344,7 @@ export default function FinancePage() {
         </div>
 
         {/* Main Grid */}
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex gap-6">
           {/* Left Content Area */}
           <div className="flex-1 min-w-0">
             {/* Stock Prices Row */}
@@ -394,6 +394,55 @@ export default function FinancePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+
+            {/* Mobile Forex Rates - Shows between stocks and market summary on mobile */}
+            <section className="mb-6 lg:hidden">
+              <div className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-zinc-700/40">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-zinc-100">USD Exchange</h3>
+                    <span className="text-xs text-cyan-400">Live</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-zinc-700/40">
+                  {forexRates.slice(0, 4).map((forex) => (
+                    <div 
+                      key={forex.pair}
+                      className="px-4 py-3 hover:bg-zinc-800/30 transition-colors duration-200"
+                    >
+                      <div className="text-center">
+                        <span className="text-zinc-400 text-xs">USD/{forex.pair}</span>
+                        <div className="text-zinc-100 font-medium text-sm mt-1">
+                          {forex.rate?.toFixed(forex.rate >= 100 ? 2 : 4) || '0.00'}
+                        </div>
+                        <div className={`text-xs ${forex.change >= 0 ? 'text-cyan-400' : 'text-red-500'}`}>
+                          {forex.change >= 0 ? '+' : ''}{forex.change?.toFixed(2) || '0.00'}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-zinc-700/40 border-t border-zinc-700/40">
+                  {forexRates.slice(4, 8).map((forex) => (
+                    <div 
+                      key={forex.pair}
+                      className="px-4 py-3 hover:bg-zinc-800/30 transition-colors duration-200"
+                    >
+                      <div className="text-center">
+                        <span className="text-zinc-400 text-xs">USD/{forex.pair}</span>
+                        <div className="text-zinc-100 font-medium text-sm mt-1">
+                          {forex.rate?.toFixed(forex.rate >= 100 ? 2 : 4) || '0.00'}
+                        </div>
+                        <div className={`text-xs ${forex.change >= 0 ? 'text-cyan-400' : 'text-red-500'}`}>
+                          {forex.change >= 0 ? '+' : ''}{forex.change?.toFixed(2) || '0.00'}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
 
@@ -548,9 +597,9 @@ export default function FinancePage() {
             </section>
           </div>
 
-          {/* Right Sidebar - Forex Rates */}
-          <aside className="w-full lg:w-64 flex-shrink-0">
-            <div className="lg:sticky lg:top-28">
+          {/* Right Sidebar - Forex Rates (Desktop only) */}
+          <aside className="hidden lg:block w-64 flex-shrink-0">
+            <div className="sticky top-28">
               <div className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-zinc-700/40">
                   <div className="flex items-center justify-between">
