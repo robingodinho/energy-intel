@@ -201,6 +201,8 @@ export default function FinancePage() {
   const [stockHistory, setStockHistory] = useState<Record<string, PricePoint[]>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [usdAmountStr, setUsdAmountStr] = useState<string>('1');
+  const usdAmount = parseFloat(usdAmountStr) || 0;
 
   // Fetch data on mount
   useEffect(() => {
@@ -399,50 +401,57 @@ export default function FinancePage() {
 
             {/* Mobile Forex Rates - Shows between stocks and market summary on mobile */}
             <section className="mb-6 lg:hidden">
-              <div className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-zinc-700/40">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-zinc-100">USD Exchange</h3>
-                    <span className="text-xs text-cyan-400">Live</span>
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">USD Exchange</h3>
+                <span className="text-xs text-cyan-400">Live</span>
+              </div>
+              
+              {/* USD Amount Input */}
+              <div className="mb-4">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-lg">$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={usdAmountStr}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // Allow empty, numbers, and decimal point
+                      if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                        setUsdAmountStr(val);
+                      }
+                    }}
+                    className="w-full bg-zinc-800/50 border border-zinc-700/40 rounded-xl py-3 pl-8 pr-16 
+                             text-zinc-300 text-lg font-medium placeholder-zinc-500
+                             focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/25
+                             transition-all duration-200"
+                    placeholder="1.00"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">USD</span>
                 </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-zinc-700/40">
-                  {forexRates.slice(0, 4).map((forex) => (
+              </div>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {forexRates.map((forex) => {
+                  const convertedValue = usdAmount * (forex.rate || 0);
+                  return (
                     <div 
                       key={forex.pair}
-                      className="px-4 py-3 hover:bg-zinc-800/30 transition-colors duration-200"
+                      className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl px-4 py-3 
+                               hover:bg-zinc-800/50 hover:border-zinc-600/50 transition-colors duration-200"
                     >
                       <div className="text-center">
-                        <span className="text-zinc-400 text-xs">USD/{forex.pair}</span>
-                        <div className="text-zinc-100 font-medium text-sm mt-1">
-                          {forex.rate?.toFixed(forex.rate >= 100 ? 2 : 4) || '0.00'}
+                        <span className="text-zinc-400 text-xs">{forex.pair}</span>
+                        <div className="text-zinc-100 font-medium text-base mt-1">
+                          {convertedValue.toFixed(convertedValue >= 100 ? 2 : 4)}
                         </div>
                         <div className={`text-xs ${forex.change >= 0 ? 'text-cyan-400' : 'text-red-500'}`}>
                           {forex.change >= 0 ? '+' : ''}{forex.change?.toFixed(2) || '0.00'}%
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-zinc-700/40 border-t border-zinc-700/40">
-                  {forexRates.slice(4, 8).map((forex) => (
-                    <div 
-                      key={forex.pair}
-                      className="px-4 py-3 hover:bg-zinc-800/30 transition-colors duration-200"
-                    >
-                      <div className="text-center">
-                        <span className="text-zinc-400 text-xs">USD/{forex.pair}</span>
-                        <div className="text-zinc-100 font-medium text-sm mt-1">
-                          {forex.rate?.toFixed(forex.rate >= 100 ? 2 : 4) || '0.00'}
-                        </div>
-                        <div className={`text-xs ${forex.change >= 0 ? 'text-cyan-400' : 'text-red-500'}`}>
-                          {forex.change >= 0 ? '+' : ''}{forex.change?.toFixed(2) || '0.00'}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </section>
 
@@ -608,25 +617,53 @@ export default function FinancePage() {
                   </div>
                 </div>
                 
+                {/* USD Amount Input */}
+                <div className="px-4 py-3 border-b border-zinc-700/40">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={usdAmountStr}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        // Allow empty, numbers, and decimal point
+                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                          setUsdAmountStr(val);
+                        }
+                      }}
+                      className="w-full bg-zinc-800/50 border border-zinc-700/40 rounded-lg py-2 pl-7 pr-12 
+                               text-zinc-300 text-sm font-medium placeholder-zinc-500
+                               focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/25
+                               transition-all duration-200"
+                      placeholder="1.00"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs">USD</span>
+                  </div>
+                </div>
+                
                 <div className="divide-y divide-zinc-700/40">
-                  {forexRates.map((forex) => (
-                    <div 
-                      key={forex.pair}
-                      className="px-4 py-3 hover:bg-zinc-800/30 transition-colors duration-200"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-zinc-400 text-sm">USD/{forex.pair}</span>
-                        <div className="text-right">
-                          <div className="text-zinc-100 font-medium text-sm">
-                            {forex.rate?.toFixed(forex.rate >= 100 ? 2 : 4) || '0.00'}
-                          </div>
-                          <div className={`text-xs ${forex.change >= 0 ? 'text-cyan-400' : 'text-red-500'}`}>
-                            {forex.change >= 0 ? '+' : ''}{forex.change?.toFixed(2) || '0.00'}%
+                  {forexRates.map((forex) => {
+                    const convertedValue = usdAmount * (forex.rate || 0);
+                    return (
+                      <div 
+                        key={forex.pair}
+                        className="px-4 py-3 hover:bg-zinc-800/30 transition-colors duration-200"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-400 text-sm">USD/{forex.pair}</span>
+                          <div className="text-right">
+                            <div className="text-zinc-100 font-medium text-sm">
+                              {convertedValue.toFixed(convertedValue >= 100 ? 2 : 4)}
+                            </div>
+                            <div className={`text-xs ${forex.change >= 0 ? 'text-cyan-400' : 'text-red-500'}`}>
+                              {forex.change >= 0 ? '+' : ''}{forex.change?.toFixed(2) || '0.00'}%
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="px-4 py-3 border-t border-zinc-700/40 bg-zinc-800/30">
