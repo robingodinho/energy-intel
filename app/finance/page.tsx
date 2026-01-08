@@ -198,6 +198,8 @@ export default function FinancePage() {
   const [stocks, setStocks] = useState<Stock[]>(FALLBACK_STOCKS);
   const [forexRates, setForexRates] = useState<ForexRate[]>(FALLBACK_FOREX);
   const [articles, setArticles] = useState<FinanceArticle[]>([]);
+  const [archivedArticles, setArchivedArticles] = useState<FinanceArticle[]>([]);
+  const [showArchive, setShowArchive] = useState(false);
   const [stockHistory, setStockHistory] = useState<Record<string, PricePoint[]>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
@@ -210,11 +212,12 @@ export default function FinancePage() {
       setLoading(true);
       
       try {
-        // Fetch all data in parallel
-        const [stocksRes, forexRes, articlesRes, historyRes] = await Promise.all([
+        // Fetch all data in parallel (including archived articles)
+        const [stocksRes, forexRes, articlesRes, archivedRes, historyRes] = await Promise.all([
           fetch('/api/finance/stocks').then(r => r.json()).catch(() => ({ stocks: FALLBACK_STOCKS })),
           fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
           fetch('/api/finance/articles?limit=6').then(r => r.json()).catch(() => ({ articles: [] })),
+          fetch('/api/finance/articles?archived=true&limit=50').then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
         ]);
 
@@ -228,6 +231,10 @@ export default function FinancePage() {
         
         if (articlesRes.articles?.length > 0) {
           setArticles(articlesRes.articles);
+        }
+
+        if (archivedRes.articles?.length > 0) {
+          setArchivedArticles(archivedRes.articles);
         }
         
         if (historyRes.history) {
@@ -290,8 +297,13 @@ export default function FinancePage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Title */}
+        <h2 className="text-2xl font-semibold text-zinc-100 text-center mb-4">
+          Finance
+        </h2>
+        
         {/* Market Selector Row */}
-        <div className="relative flex items-center justify-between mb-6">
+        <div className="mb-6">
           <div className="relative inline-block">
             <button
               onClick={() => setMarketDropdownOpen(!marketDropdownOpen)}
@@ -337,12 +349,6 @@ export default function FinancePage() {
               </div>
             )}
           </div>
-          
-          <h2 className="text-2xl font-semibold text-zinc-100 absolute left-1/2 -translate-x-1/2">
-            Finance
-          </h2>
-          
-          <div className="w-[140px]"></div>
         </div>
 
         {/* Main Grid */}
@@ -512,18 +518,46 @@ export default function FinancePage() {
             {/* Recent Developments Section - Articles with Images */}
             <section className="mt-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-                  Recent Developments
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
+                    {showArchive ? 'Archive' : 'Recent Developments'}
+                  </h2>
+                  {/* Filter Toggle */}
+                  <div className="flex bg-zinc-800/50 rounded-lg p-0.5">
+                    <button
+                      onClick={() => setShowArchive(false)}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
+                        !showArchive 
+                          ? 'bg-cyan-500/20 text-cyan-400' 
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      Recent
+                    </button>
+                    <button
+                      onClick={() => setShowArchive(true)}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
+                        showArchive 
+                          ? 'bg-cyan-500/20 text-cyan-400' 
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      Archive
+                    </button>
+                  </div>
+                </div>
                 <span className="text-xs text-cyan-400">
-                  {articles.length > 0 ? `${articles.length} articles` : 'Loading...'}
+                  {showArchive 
+                    ? (archivedArticles.length > 0 ? `${archivedArticles.length} archived` : 'No archived articles')
+                    : (articles.length > 0 ? `${articles.length} articles` : 'Loading...')
+                  }
                 </span>
               </div>
               
               {/* Articles Grid with Images */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {articles.length > 0 ? (
-                  articles.map((article) => (
+                {(showArchive ? archivedArticles : articles).length > 0 ? (
+                  (showArchive ? archivedArticles : articles).map((article) => (
                     <a
                       key={article.id}
                       href={article.link}
@@ -589,7 +623,7 @@ export default function FinancePage() {
                       </div>
                     </a>
                   ))
-                ) : (
+                ) : loading ? (
                   // Loading skeleton
                   [...Array(6)].map((_, i) => (
                     <div key={i} className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden animate-pulse">
@@ -601,6 +635,18 @@ export default function FinancePage() {
                       </div>
                     </div>
                   ))
+                ) : (
+                  // Empty state
+                  <div className="col-span-full text-center py-12">
+                    <svg className="w-16 h-16 text-zinc-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                    </svg>
+                    <p className="text-zinc-500 text-sm">
+                      {showArchive 
+                        ? 'No archived articles yet. Articles older than the 6 most recent will appear here.'
+                        : 'No articles available at the moment.'}
+                    </p>
+                  </div>
                 )}
               </div>
             </section>

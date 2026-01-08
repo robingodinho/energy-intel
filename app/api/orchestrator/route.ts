@@ -225,12 +225,71 @@ export async function GET(request: NextRequest) {
     }
 
     // ========================================
-    // TASK 3: Revalidate UI cache
+    // TASK 3: Archive old finance articles (keep only 6 most recent)
+    // ========================================
+    console.log('[orchestrator] Task 3: Archiving old finance articles...');
+    let financeArchived = 0;
+    try {
+      // Get the 6 most recent finance article IDs (these should stay active)
+      const { data: recentFinanceArticles, error: recentError } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('article_type', 'finance')
+        .eq('is_archived', false)
+        .order('pub_date', { ascending: false })
+        .limit(6);
+
+      if (recentError) {
+        console.error('[orchestrator] Error fetching recent finance articles:', recentError);
+      } else if (recentFinanceArticles && recentFinanceArticles.length > 0) {
+        const keepIds = new Set(recentFinanceArticles.map(a => a.id));
+        
+        // Get ALL non-archived finance articles to find ones to archive
+        const { data: allFinanceArticles, error: allError } = await supabase
+          .from('articles')
+          .select('id')
+          .eq('article_type', 'finance')
+          .eq('is_archived', false);
+
+        if (allError) {
+          console.error('[orchestrator] Error fetching all finance articles:', allError);
+        } else if (allFinanceArticles) {
+          // Find IDs that are NOT in the top 6
+          const idsToArchive = allFinanceArticles
+            .filter(a => !keepIds.has(a.id))
+            .map(a => a.id);
+
+          if (idsToArchive.length > 0) {
+            // Archive each article individually (more reliable)
+            for (const id of idsToArchive) {
+              const { error: archiveError } = await supabase
+                .from('articles')
+                .update({ is_archived: true })
+                .eq('id', id);
+
+              if (archiveError) {
+                console.error(`[orchestrator] Error archiving article ${id}:`, archiveError);
+              } else {
+                financeArchived++;
+              }
+            }
+            console.log(`[orchestrator] Task 3 Complete: ${financeArchived} finance articles archived`);
+          } else {
+            console.log('[orchestrator] Task 3 Complete: No finance articles needed archiving');
+          }
+        }
+      }
+    } catch (archiveErr) {
+      console.error('[orchestrator] Finance archive error (non-fatal):', archiveErr);
+    }
+
+    // ========================================
+    // TASK 4: Revalidate UI cache
     // ========================================
     // This ensures the homepage shows fresh data after ingestion.
     // Without this, Next.js might serve stale cached pages even with force-dynamic
     // because of edge/CDN caching or full route cache.
-    console.log('[orchestrator] Task 3: Revalidating UI cache...');
+    console.log('[orchestrator] Task 4: Revalidating UI cache...');
     try {
       revalidatePath('/');
       revalidatePath('/about');

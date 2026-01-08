@@ -12,23 +12,72 @@ export const revalidate = 300; // 5 minutes
  * 
  * Query params:
  * - limit: number of articles to return (default: 6)
+ * - archived: 'true' to get archived articles, 'false' or omit for active articles
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '6', 10);
+    const showArchived = searchParams.get('archived') === 'true';
 
     const supabase = getSupabase();
     
-    const { data: articles, error } = await supabase
+    let query = supabase
       .from('articles')
       .select('*')
       .eq('article_type', 'finance')
-      .order('pub_date', { ascending: false })
-      .limit(limit);
+      .order('pub_date', { ascending: false });
+
+    // Filter by archived status
+    // Note: If is_archived column doesn't exist yet, this will return all articles
+    // After running migration 003, this will properly filter
+    if (showArchived) {
+      query = query.eq('is_archived', true);
+    } else {
+      query = query.eq('is_archived', false);
+    }
+
+    query = query.limit(limit);
+
+    const { data: articles, error } = await query;
 
     if (error) {
       console.error('[finance/articles] Database error:', error);
+      // If error is about is_archived column not existing, fallback to unfiltered
+      if (error.message?.includes('is_archived')) {
+        const { data: fallbackArticles, error: fallbackError } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('article_type', 'finance')
+          .order('pub_date', { ascending: false })
+          .limit(limit);
+
+        if (fallbackError) {
+          return NextResponse.json({
+            articles: [],
+            error: 'Failed to fetch articles',
+          }, { status: 500 });
+        }
+
+        const transformedArticles = (fallbackArticles || []).map(article => ({
+          id: article.id,
+          title: article.title,
+          summary: article.summary,
+          source: article.source,
+          link: article.link,
+          pubDate: article.pub_date,
+          imageUrl: article.image_url,
+          category: article.category,
+          timeAgo: getTimeAgo(new Date(article.pub_date)),
+        }));
+
+        return NextResponse.json({
+          articles: transformedArticles,
+          count: transformedArticles.length,
+          note: 'Archive filter not available - run migration 003',
+        });
+      }
+
       return NextResponse.json({
         articles: [],
         error: 'Failed to fetch articles',
@@ -51,6 +100,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       articles: transformedArticles,
       count: transformedArticles.length,
+      archived: showArchived,
     });
   } catch (error) {
     console.error('[finance/articles] Error:', error);
