@@ -344,7 +344,7 @@ export default function FinancePage() {
         </div>
 
         {/* Main Grid */}
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Content Area */}
           <div className="flex-1 min-w-0">
             {/* Stock Prices Row */}
@@ -549,8 +549,8 @@ export default function FinancePage() {
           </div>
 
           {/* Right Sidebar - Forex Rates */}
-          <aside className="w-64 flex-shrink-0 hidden lg:block">
-            <div className="sticky top-28">
+          <aside className="w-full lg:w-64 flex-shrink-0">
+            <div className="lg:sticky lg:top-28">
               <div className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-zinc-700/40">
                   <div className="flex items-center justify-between">
