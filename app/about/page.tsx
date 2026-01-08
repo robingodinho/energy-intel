@@ -244,19 +244,19 @@ export default function AboutPage() {
 
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Finance & Market Data</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                <div className="px-3 py-2 bg-cyan-900/30 rounded-lg text-cyan-300 border border-cyan-800/30">
+                <div className="px-3 py-2 bg-zinc-800/50 rounded-lg text-zinc-300">
                   Yahoo Finance
                 </div>
-                <div className="px-3 py-2 bg-cyan-900/30 rounded-lg text-cyan-300 border border-cyan-800/30">
+                <div className="px-3 py-2 bg-zinc-800/50 rounded-lg text-zinc-300">
                   CNBC Energy
                 </div>
-                <div className="px-3 py-2 bg-cyan-900/30 rounded-lg text-cyan-300 border border-cyan-800/30">
+                <div className="px-3 py-2 bg-zinc-800/50 rounded-lg text-zinc-300">
                   Alpha Vantage API
                 </div>
-                <div className="px-3 py-2 bg-cyan-900/30 rounded-lg text-cyan-300 border border-cyan-800/30">
+                <div className="px-3 py-2 bg-zinc-800/50 rounded-lg text-zinc-300">
                   Exchange Rate API
                 </div>
-                <div className="px-3 py-2 bg-cyan-900/30 rounded-lg text-cyan-300 border border-cyan-800/30">
+                <div className="px-3 py-2 bg-zinc-800/50 rounded-lg text-zinc-300">
                   OpenAI GPT-4o-mini
                 </div>
               </div>
