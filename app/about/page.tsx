@@ -51,9 +51,44 @@ export default function AboutPage() {
             <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
               <h2 className="text-2xl font-semibold text-cyan-400 mb-4">Our Mission</h2>
               <p className="text-zinc-300 leading-relaxed">
-                Energy Intel is a cutting-edge intelligence platform that aggregates and analyzes U.S. federal energy policy updates 
-                in real-time. We help energy professionals, policy analysts, and industry leaders stay informed about critical 
-                regulatory changes, market developments, and infrastructure initiatives that shape the American energy landscape.
+                Energy Intel provides real-time, AI-driven intelligence on U.S. energy policy to federal agencies, state regulators, 
+                energy companies, and policy analysts. By addressing information fragmentation across multiple sources, we enable 
+                stakeholders to respond more effectively to challenges in energy transition, grid reliability, and energy security.
+              </p>
+            </section>
+
+            <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
+              <h2 className="text-2xl font-semibold text-cyan-400 mb-4">The Challenge</h2>
+              <p className="text-zinc-300 leading-relaxed mb-6">
+                The U.S. energy sector faces unprecedented complexity driven by three interconnected challenges:
+              </p>
+              <div className="space-y-4">
+                <div className="bg-zinc-800/40 rounded-lg p-4 border border-zinc-700/50">
+                  <h3 className="font-semibold text-zinc-100 mb-2">Rapid Energy Transition</h3>
+                  <p className="text-zinc-400 text-sm leading-relaxed">
+                    Achieving <span className="text-cyan-400">decarbonization goals</span> while maintaining grid reliability requires coordinating policy across 
+                    federal agencies, 50 state regulators, and thousands of energy providers.
+                  </p>
+                </div>
+                <div className="bg-zinc-800/40 rounded-lg p-4 border border-zinc-700/50">
+                  <h3 className="font-semibold text-zinc-100 mb-2">AI & Data Center Electricity Demand</h3>
+                  <p className="text-zinc-400 text-sm leading-relaxed">
+                    Electricity demand from artificial intelligence and data centers is projected to <span className="text-cyan-400">grow 160% by 2030</span> 
+                    {' '}(International Energy Agency), requiring massive new infrastructure investment and coordinated policy responses.
+                  </p>
+                </div>
+                <div className="bg-zinc-800/40 rounded-lg p-4 border border-zinc-700/50">
+                  <h3 className="font-semibold text-zinc-100 mb-2">Information Fragmentation</h3>
+                  <p className="text-zinc-400 text-sm leading-relaxed">
+                    Critical energy policy developments are distributed across dozens of federal agencies, state regulatory bodies, 
+                    and industry publications. No single stakeholder can effectively monitor all relevant sources, creating 
+                    <span className="text-cyan-400"> information gaps that hinder timely decision-making</span> on energy security, grid reliability, and regulatory compliance.
+                  </p>
+                </div>
+              </div>
+              <p className="text-zinc-300 leading-relaxed mt-6">
+                Energy Intel consolidates and analyzes these developments in real-time, enabling stakeholders to respond 
+                more effectively to interconnected energy challenges.
               </p>
             </section>
 
@@ -316,6 +351,11 @@ export default function AboutPage() {
                   Robin Godinho is an information management professional with experience designing AI-enabled data pipelines 
                   and decision-support systems. His work focuses on applying artificial intelligence to complex, high-impact 
                   domains such as energy policy, infrastructure planning, and regulatory analysis.
+                </p>
+                <p className="text-zinc-300 leading-relaxed">
+                  Robin holds a Master&apos;s in Information Management from the University of Maryland and multiple AI/ML 
+                  certifications from AWS, IBM, and Microsoft. His professional background includes energy forecasting and 
+                  analytics work with major energy corporations.
                 </p>
                 <p className="text-zinc-300 leading-relaxed">
                   Energy Intel reflects this focus by combining real-time data aggregation with AI-driven intelligence 
