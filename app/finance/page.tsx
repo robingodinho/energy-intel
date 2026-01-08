@@ -32,6 +32,12 @@ interface FinanceArticle {
   category?: string;
 }
 
+interface MarketSummary {
+  id: number;
+  headline: string;
+  summary: string;
+}
+
 // Fallback images for sources that don't provide article-specific images
 const SOURCE_FALLBACK_IMAGES: Record<string, string> = {
   'Yahoo Finance': 'https://s.yimg.com/cv/apiv2/cv/apiv2/social/images/yahoo-finance-default-logo.png',
@@ -64,37 +70,9 @@ const FALLBACK_FOREX: ForexRate[] = [
   { pair: 'AUD', rate: 1.61, change: 0.31 },
 ];
 
-const MARKET_SUMMARIES = [
-  {
-    id: 1,
-    headline: 'Oil Prices Surge on OPEC+ Supply Concerns',
-    summary: 'Crude oil prices climbed 2.3% to $78.45 per barrel as OPEC+ signals potential production cuts. Market analysts expect continued volatility amid geopolitical tensions in the Middle East and shifting demand forecasts from major economies.',
-  },
-  {
-    id: 2,
-    headline: 'Natural Gas Rallies Amid Cold Weather Forecasts',
-    summary: 'Natural gas futures jumped 4.1% as meteorologists predict below-average temperatures across the Northeast. Storage levels remain 5% below the five-year average, adding upward pressure on prices.',
-  },
-  {
-    id: 3,
-    headline: 'Renewable Energy Stocks See Strong Gains on Policy Support',
-    summary: 'Solar and wind energy companies rallied following new federal incentives announcement. First Solar (FSLR) gained 5.2% while NextEra Energy (NEE) rose 3.1% on increased investor optimism.',
-  },
-  {
-    id: 4,
-    headline: 'Energy Sector Outperforms Broader Market',
-    summary: 'The S&P 500 Energy sector rose 1.8% compared to 0.4% for the broader index. Integrated oil majors led gains as refining margins improved and upstream operations showed strong cash flow generation.',
-  },
-  {
-    id: 5,
-    headline: 'LNG Export Capacity Expansion Accelerates',
-    summary: 'U.S. LNG exports reached record levels as new terminal capacity comes online. European demand remains robust despite mild winter, while Asian buyers secure long-term contracts.',
-  },
-  {
-    id: 6,
-    headline: 'Battery Storage Investments Hit New High',
-    summary: 'Grid-scale battery storage deployments increased 45% year-over-year. Declining lithium-ion costs and supportive regulations drive utility-scale project approvals across multiple states.',
-  },
+// Fallback market summaries while loading
+const FALLBACK_MARKET_SUMMARIES: MarketSummary[] = [
+  { id: 1, headline: 'Loading market data...', summary: 'AI-generated market summaries are being prepared.' },
 ];
 
 type Market = 'US';
@@ -200,6 +178,7 @@ export default function FinancePage() {
   const [articles, setArticles] = useState<FinanceArticle[]>([]);
   const [archivedArticles, setArchivedArticles] = useState<FinanceArticle[]>([]);
   const [showArchive, setShowArchive] = useState(false);
+  const [marketSummaries, setMarketSummaries] = useState<MarketSummary[]>(FALLBACK_MARKET_SUMMARIES);
   const [stockHistory, setStockHistory] = useState<Record<string, PricePoint[]>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
@@ -212,13 +191,14 @@ export default function FinancePage() {
       setLoading(true);
       
       try {
-        // Fetch all data in parallel (including archived articles)
-        const [stocksRes, forexRes, articlesRes, archivedRes, historyRes] = await Promise.all([
+        // Fetch all data in parallel (including archived articles and market summaries)
+        const [stocksRes, forexRes, articlesRes, archivedRes, historyRes, summariesRes] = await Promise.all([
           fetch('/api/finance/stocks').then(r => r.json()).catch(() => ({ stocks: FALLBACK_STOCKS })),
           fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
           fetch('/api/finance/articles?limit=6').then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/articles?archived=true&limit=9').then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
+          fetch('/api/finance/market-summary').then(r => r.json()).catch(() => ({ summaries: [] })),
         ]);
 
         if (stocksRes.stocks?.length > 0) {
@@ -239,6 +219,10 @@ export default function FinancePage() {
         
         if (historyRes.history) {
           setStockHistory(historyRes.history);
+        }
+
+        if (summariesRes.summaries?.length > 0) {
+          setMarketSummaries(summariesRes.summaries);
         }
         
         setLastUpdated(new Date().toLocaleTimeString());
@@ -472,7 +456,7 @@ export default function FinancePage() {
                 </span>
               </div>
               <div className="bg-zinc-800/25 border border-zinc-700/40 rounded-xl overflow-hidden">
-                {MARKET_SUMMARIES.map((item, index) => (
+                {marketSummaries.map((item, index) => (
                   <div 
                     key={item.id}
                     className={`${index !== 0 ? 'border-t border-zinc-700/40' : ''}`}
@@ -506,12 +490,10 @@ export default function FinancePage() {
                 ))}
               </div>
               <div className="flex items-center gap-2 mt-3 text-xs text-zinc-500">
-                <div className="flex -space-x-1">
-                  <div className="w-5 h-5 rounded-full bg-zinc-700 border border-zinc-800 flex items-center justify-center text-[8px]">R</div>
-                  <div className="w-5 h-5 rounded-full bg-zinc-700 border border-zinc-800 flex items-center justify-center text-[8px]">B</div>
-                  <div className="w-5 h-5 rounded-full bg-zinc-700 border border-zinc-800 flex items-center justify-center text-[8px]">C</div>
-                </div>
-                <span>42 Sources</span>
+                <svg className="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+                </svg>
+                <span>AI-generated from recent articles</span>
               </div>
             </section>
 
