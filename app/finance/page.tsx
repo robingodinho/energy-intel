@@ -217,7 +217,7 @@ export default function FinancePage() {
           fetch('/api/finance/stocks').then(r => r.json()).catch(() => ({ stocks: FALLBACK_STOCKS })),
           fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
           fetch('/api/finance/articles?limit=6').then(r => r.json()).catch(() => ({ articles: [] })),
-          fetch('/api/finance/articles?archived=true&limit=50').then(r => r.json()).catch(() => ({ articles: [] })),
+          fetch('/api/finance/articles?archived=true&limit=9').then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
         ]);
 
