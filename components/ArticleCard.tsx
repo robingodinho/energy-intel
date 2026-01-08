@@ -119,8 +119,6 @@ export function ArticleCard({ article, priority = false }: ArticleCardProps) {
     <div className="article-card-wrapper h-full">
       <a
         href={article.link}
-        target="_blank"
-        rel="noopener noreferrer"
         className="group flex flex-col bg-zinc-900/50 rounded-2xl overflow-hidden border border-zinc-800/50 
                    transition-all duration-300 h-full p-4 relative z-10"
       >
@@ -193,8 +191,6 @@ export function LargeArticleCard({
     <div className="article-card-wrapper">
       <a
         href={article.link}
-        target="_blank"
-        rel="noopener noreferrer"
         className="group block bg-zinc-900/30 rounded-2xl overflow-hidden border border-zinc-800/50 
                    transition-all duration-300 relative z-10"
       >

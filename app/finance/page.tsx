@@ -469,8 +469,6 @@ export default function FinancePage() {
                     <a
                       key={article.id}
                       href={article.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="group bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden
                                hover:bg-zinc-800/50 hover:border-zinc-600/50 transition-all duration-200"
                     >
