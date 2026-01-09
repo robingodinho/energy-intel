@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { EnervaBrand } from '@/components/EnervaBrand';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -28,30 +28,19 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                   transition-opacity duration-1000 ease-out
                   ${phase === 'fadeout' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
     >
-      {/* Logo */}
-      <div 
-        className={`transition-all duration-700 ease-out
-                    ${phase === 'logo' ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}
-        style={{ transitionDelay: '0ms' }}
-      >
-        <Image 
-          src="/logo/logo.png" 
-          alt="Energy Intel Logo" 
-          width={96}
-          height={96}
-          className="h-24 w-auto mb-6"
-        />
-      </div>
 
-      {/* Title */}
-      <h1 
-        className={`text-5xl sm:text-6xl font-semibold text-zinc-100 font-sora tracking-tight mb-4
-                    transition-all duration-700 ease-out
+      {/* Brand Name */}
+      <div 
+        className={`transition-all duration-700 ease-out mb-6
                     ${phase === 'logo' ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
         style={{ transitionDelay: '100ms' }}
       >
-        Energy Intel
-      </h1>
+        <EnervaBrand 
+          size="large" 
+          animate={phase === 'slogan' || phase === 'fadeout'} 
+          glow 
+        />
+      </div>
 
       {/* Slogan with shine effect */}
       <p 
@@ -73,4 +62,3 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     </div>
   );
 }
-

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
+import { EnervaBrand } from '@/components/EnervaBrand';
 
 // Types for API responses
 interface Stock {
@@ -257,20 +258,9 @@ export default function FinancePage() {
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-20">
-            <Link href="/" className="absolute left-0">
-              <Image 
-                src="/logo/logo.png" 
-                alt="Energy Intel Logo" 
-                width={64}
-                height={64}
-                className="h-16 w-auto hover:opacity-80 transition-opacity"
-              />
-            </Link>
+          <div className="relative flex items-center justify-center h-24">
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <h1 className="text-3xl font-semibold text-zinc-100 font-sora tracking-tight">
-                Energy Intel
-              </h1>
+              <EnervaBrand size="header" glow />
             </Link>
             <div className="absolute right-0">
               <HamburgerMenu />
@@ -709,7 +699,7 @@ export default function FinancePage() {
       <footer className="mt-16 border-t border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-center text-sm text-zinc-500">
-            © 2026 Energy Intel. AI-Driven Intelligence for Energy Policy and Infrastructure.
+            © 2026 enerva. AI-Driven Intelligence for Energy Policy and Infrastructure.
           </p>
         </div>
       </footer>

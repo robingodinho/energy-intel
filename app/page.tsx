@@ -1,11 +1,13 @@
 import { Suspense } from 'react';
 import { unstable_noStore as noStore } from 'next/cache';
 import Image from 'next/image';
+import Link from 'next/link';
 import { getArticles, TimeRange } from '@/lib/getArticles';
 import { ArticleCard, LargeArticleCard } from '@/components/ArticleCard';
 import { CategoryChips } from '@/components/CategoryChips';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { PageWrapper } from '@/components/PageWrapper';
+import { EnervaBrand } from '@/components/EnervaBrand';
 import { ArticleCategory, ArticleRow } from '@/types/article';
 
 // Force dynamic rendering - always fetch fresh data from Supabase
@@ -99,21 +101,11 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
         {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-20">
-            {/* Logo - Absolute positioned to the left */}
-            <div className="absolute left-0">
-              <Image 
-                src="/logo/logo.png" 
-                alt="Energy Intel Logo" 
-                width={64}
-                height={64}
-                className="h-16 w-auto"
-              />
-            </div>
+          <div className="relative flex items-center justify-center h-24">
             {/* Centered Title */}
-            <h1 className="text-3xl font-semibold text-zinc-100 font-sora tracking-tight">
-              Energy Intel
-            </h1>
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <EnervaBrand size="header" glow />
+            </Link>
             {/* Hamburger Menu - Absolute positioned to the right */}
             <div className="absolute right-0">
               <HamburgerMenu />

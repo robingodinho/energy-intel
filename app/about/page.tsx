@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
+import { EnervaBrand } from '@/components/EnervaBrand';
 
 export default function AboutPage() {
   return (
@@ -8,22 +9,10 @@ export default function AboutPage() {
       {/* Header - Matching main feed page */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-20">
-            {/* Logo - Absolute positioned to the left */}
-            <Link href="/" className="absolute left-0">
-              <Image 
-                src="/logo/logo.png" 
-                alt="Energy Intel Logo" 
-                width={64}
-                height={64}
-                className="h-16 w-auto hover:opacity-80 transition-opacity"
-              />
-            </Link>
+          <div className="relative flex items-center justify-center h-24">
             {/* Centered Title */}
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <h1 className="text-3xl font-semibold text-zinc-100 font-sora tracking-tight">
-                Energy Intel
-              </h1>
+              <EnervaBrand size="header" glow />
             </Link>
             {/* Hamburger Menu - Absolute positioned to the right */}
             <div className="absolute right-0">
@@ -39,7 +28,7 @@ export default function AboutPage() {
           {/* Title Section */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
-              About Energy Intel
+              About enerva
             </h1>
             <p className="text-xl text-zinc-400 font-light">
               AI-Driven Intelligence for Energy Policy and Infrastructure
@@ -51,7 +40,7 @@ export default function AboutPage() {
             <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
               <h2 className="text-2xl font-semibold text-cyan-400 mb-4">Our Mission</h2>
               <p className="text-zinc-300 leading-relaxed">
-                Energy Intel provides real-time, AI-driven intelligence on U.S. energy policy to federal agencies, state regulators, 
+                enerva provides real-time, AI-driven intelligence on U.S. energy policy to federal agencies, state regulators, 
                 energy companies, and policy analysts. By addressing information fragmentation across multiple sources, we enable 
                 stakeholders to respond more effectively to challenges in energy transition, grid reliability, and energy security.
               </p>
@@ -87,7 +76,7 @@ export default function AboutPage() {
                 </div>
               </div>
               <p className="text-zinc-300 leading-relaxed mt-6">
-                Energy Intel consolidates and analyzes these developments in real-time, enabling stakeholders to respond 
+                enerva consolidates and analyzes these developments in real-time, enabling stakeholders to respond 
                 more effectively to interconnected energy challenges.
               </p>
             </section>
@@ -358,7 +347,7 @@ export default function AboutPage() {
                   analytics work with major energy corporations.
                 </p>
                 <p className="text-zinc-300 leading-relaxed">
-                  Energy Intel reflects this focus by combining real-time data aggregation with AI-driven intelligence 
+                  enerva reflects this focus by combining real-time data aggregation with AI-driven intelligence 
                   to support informed decision-making in the energy sector.
                 </p>
               </div>
@@ -371,7 +360,7 @@ export default function AboutPage() {
       <footer className="mt-16 border-t border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-center text-sm text-zinc-500">
-            © 2026 Energy Intel. AI-Driven Intelligence for Energy Policy and Infrastructure.
+            © 2026 enerva. AI-Driven Intelligence for Energy Policy and Infrastructure.
           </p>
         </div>
       </footer>
