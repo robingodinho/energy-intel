@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { EnervaBrand } from '@/components/EnervaBrand';
 
 interface SplashScreenProps {
@@ -28,6 +29,21 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                   transition-opacity duration-1000 ease-out
                   ${phase === 'fadeout' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
     >
+      {/* Logo Icon */}
+      <div 
+        className={`transition-all duration-700 ease-out mb-3
+                    ${phase === 'logo' ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}
+        style={{ transitionDelay: '0ms' }}
+      >
+        <Image 
+          src="/brand/android-chrome-512x512.png" 
+          alt="enerva logo" 
+          width={120}
+          height={120}
+          className="h-24 sm:h-28 w-auto rounded-2xl"
+          priority
+        />
+      </div>
 
       {/* Brand Name */}
       <div 

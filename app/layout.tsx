@@ -27,11 +27,17 @@ export const metadata: Metadata = {
   keywords: ["enerva", "energy policy", "FERC", "EPA", "DOE", "EIA", "renewable energy", "LNG", "emissions", "grid reliability", "energy security", "AI"],
   icons: {
     icon: [
-      { url: "/brand/logo.svg", type: "image/svg+xml" },
-      { url: "/brand/logo.png", type: "image/png" },
+      { url: "/brand/favicon.ico", sizes: "any" },
+      { url: "/brand/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/brand/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: "/brand/logo.png",
+    apple: "/brand/apple-touch-icon.png",
+    other: [
+      { rel: "android-chrome", url: "/brand/android-chrome-192x192.png", sizes: "192x192" },
+      { rel: "android-chrome", url: "/brand/android-chrome-512x512.png", sizes: "512x512" },
+    ],
   },
+  manifest: "/brand/site.webmanifest",
 };
 
 export default function RootLayout({
