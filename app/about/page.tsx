@@ -7,9 +7,9 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-50">
       {/* Header - Matching main feed page */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/60 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-24">
+          <div className="relative flex items-center justify-center h-16">
             {/* Centered Title */}
             <Link href="/" className="hover:opacity-80 transition-opacity">
               <EnervaBrand size="header" glow />

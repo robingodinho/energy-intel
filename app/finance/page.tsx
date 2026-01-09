@@ -256,9 +256,9 @@ export default function FinancePage() {
   return (
     <div className="min-h-screen bg-zinc-950">
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-zinc-800/50">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/60 border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-24">
+          <div className="relative flex items-center justify-center h-16">
             <Link href="/" className="hover:opacity-80 transition-opacity">
               <EnervaBrand size="header" glow />
             </Link>
