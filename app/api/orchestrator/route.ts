@@ -30,30 +30,82 @@ interface JobRunRecord {
 /**
  * Record job run to the job_runs table
  */
-async function recordJobRun(record: JobRunRecord): Promise<{ success: boolean; error?: string }> {
+async function recordJobRun(record: JobRunRecord): Promise<{ success: boolean; error?: string; data?: any }> {
   try {
     const supabase = getSupabase();
-    const { error } = await supabase.from('job_runs').upsert({
-      job_name: record.job_name,
-      ran_at: record.ran_at,
-      status: record.status,
-      duration_ms: record.duration_ms,
-      articles_inserted: record.articles_inserted,
-      articles_updated: record.articles_updated,
-      images_enriched: record.images_enriched,
-      error_message: record.error_message,
-      host: record.host,
-    }, { onConflict: 'job_name' });
     
-    if (error) {
-      console.error('[orchestrator] Supabase error:', error.message, error.details, error.hint);
-      return { success: false, error: error.message };
+    // Use update instead of upsert to bypass potential RLS issues
+    const { data: updateData, error: updateError } = await supabase
+      .from('job_runs')
+      .update({
+        ran_at: record.ran_at,
+        status: record.status,
+        duration_ms: record.duration_ms,
+        articles_inserted: record.articles_inserted,
+        articles_updated: record.articles_updated,
+        images_enriched: record.images_enriched,
+        error_message: record.error_message,
+        host: record.host,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('job_name', record.job_name)
+      .select();
+    
+    if (updateError) {
+      console.error('[orchestrator] Update error:', updateError.message);
+      
+      // If update failed (no row exists), try insert
+      const { data: insertData, error: insertError } = await supabase
+        .from('job_runs')
+        .insert({
+          job_name: record.job_name,
+          ran_at: record.ran_at,
+          status: record.status,
+          duration_ms: record.duration_ms,
+          articles_inserted: record.articles_inserted,
+          articles_updated: record.articles_updated,
+          images_enriched: record.images_enriched,
+          error_message: record.error_message,
+          host: record.host,
+        })
+        .select();
+      
+      if (insertError) {
+        console.error('[orchestrator] Insert error:', insertError.message);
+        return { success: false, error: insertError.message };
+      }
+      return { success: true, data: insertData };
     }
-    console.log('[orchestrator] Job recorded successfully');
-    return { success: true };
+    
+    if (!updateData || updateData.length === 0) {
+      console.log('[orchestrator] Update returned no rows - trying insert');
+      const { data: insertData, error: insertError } = await supabase
+        .from('job_runs')
+        .insert({
+          job_name: record.job_name,
+          ran_at: record.ran_at,
+          status: record.status,
+          duration_ms: record.duration_ms,
+          articles_inserted: record.articles_inserted,
+          articles_updated: record.articles_updated,
+          images_enriched: record.images_enriched,
+          error_message: record.error_message,
+          host: record.host,
+        })
+        .select();
+      
+      if (insertError) {
+        console.error('[orchestrator] Insert error:', insertError.message);
+        return { success: false, error: insertError.message };
+      }
+      return { success: true, data: insertData };
+    }
+    
+    console.log('[orchestrator] Job recorded:', updateData);
+    return { success: true, data: updateData };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[orchestrator] Exception recording job:', msg);
+    console.error('[orchestrator] Exception:', msg);
     return { success: false, error: msg };
   }
 }
@@ -197,6 +249,7 @@ export async function GET(request: NextRequest) {
       tasksCompleted,
       dbRecorded: dbResult.success,
       dbError: dbResult.error || null,
+      dbData: dbResult.data || null,
     });
 
   } catch (error) {
