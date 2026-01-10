@@ -6,12 +6,15 @@ Since cron jobs are disabled, you can manually trigger the data updates using th
 
 ### 1. Orchestrator (Runs both ingestion and image enrichment)
 - **Endpoint**: `/api/orchestrator`
+- **Behavior**: Returns immediately (within seconds), processes in background
 - **What it does**: 
   - Fetches new articles from RSS feeds
   - Generates AI summaries
   - Enriches articles with images
+  - Archives old finance articles
   - Revalidates UI cache so changes appear immediately
   - Records run to `job_runs` table for heartbeat tracking
+- **Status tracking**: The job records status as `started` → `success` or `error`
 
 ### 2. Job Status (Check if cron is working)
 - **Endpoint**: `/api/job-status`
@@ -42,16 +45,7 @@ $headers = @{"x-cron-secret" = "YOUR_CRON_SECRET"}
 Invoke-RestMethod -Uri "https://enerva.ai/api/orchestrator" -Headers $headers
 ```
 
-### Option 4: Debug Mode (Extended Response)
-Add `?debug=1` to get detailed proof-of-work in the response:
-```powershell
-$headers = @{"x-cron-secret" = "YOUR_CRON_SECRET"}
-Invoke-RestMethod -Uri "https://enerva.ai/api/orchestrator?debug=1" -Headers $headers
-```
-
-Response includes: `ranAt`, `host`, `inserted`, `duplicates`, `imagesEnriched`, `latestArticleTimestamp`, `durationMs`
-
-### Option 5: Check Job Status (Verify Cron is Working)
+### Option 4: Check Job Status (Verify Cron is Working)
 ```powershell
 $headers = @{"x-cron-secret" = "YOUR_CRON_SECRET"}
 Invoke-RestMethod -Uri "https://enerva.ai/api/job-status" -Headers $headers
@@ -87,15 +81,26 @@ SELECT * FROM job_runs ORDER BY ran_at DESC;
 
 ## Troubleshooting
 
+### Understanding the Async Behavior
+The orchestrator returns immediately (200 OK) and processes in the background. This is required because cron-job.org has a 30-second timeout, but the full job takes 1-5 minutes.
+
+- **Status `started`**: Job was triggered and is currently running
+- **Status `success`**: Job completed successfully
+- **Status `error`**: Job failed (check `error_message` field)
+
+**Important**: Wait 2-5 minutes after cron-job.org shows success, then check `/api/job-status` to verify the job actually completed.
+
 ### UI Not Updating After Cron Run
-1. The orchestrator now calls `revalidatePath('/')` after completing
-2. Hard refresh your browser (Ctrl+Shift+R)
-3. Check if new articles exist: visit `/api/job-status` to see `articles_inserted` count
+1. Wait 2-5 minutes for the background job to complete
+2. Check `/api/job-status` - status should be `success` (not `started`)
+3. Hard refresh your browser (Ctrl+Shift+R)
+4. Check if new articles exist: visit `/api/job-status` to see `articles_inserted` count
 
 ### Cron-job.org Shows Success But No New Articles
-1. Check `/api/job-status` to see if the job actually ran
-2. If `articles_inserted: 0`, there might be no new articles in the RSS feeds
-3. Check `duplicates` count - high number means feeds have same articles
+1. Check `/api/job-status` to see if the job actually completed (status = `success`)
+2. If status is `started`, wait a few more minutes
+3. If `articles_inserted: 0`, there might be no new articles in the RSS feeds
+4. Check `duplicates` count - high number means feeds have same articles
 
 ### Vercel Logs Don't Show Requests
 - Vercel free tier only shows logs from the last hour

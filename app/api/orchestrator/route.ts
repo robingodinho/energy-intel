@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { revalidatePath } from 'next/cache';
 import { runIngestion } from '@/lib/ingest';
 import { getSupabase } from '@/lib/db';
@@ -8,7 +9,7 @@ import { scrapeArticleImage } from '@/lib/scrapeImage';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Allow up to 300 seconds for both tasks
+// Allow up to 300 seconds for background processing
 export const maxDuration = 300;
 
 /**
@@ -17,7 +18,7 @@ export const maxDuration = 300;
 interface JobRunRecord {
   job_name: string;
   ran_at: string;
-  status: 'success' | 'error';
+  status: 'success' | 'error' | 'started';
   duration_ms: number;
   articles_inserted: number;
   articles_updated: number;
@@ -62,62 +63,10 @@ async function recordJobRun(record: JobRunRecord): Promise<void> {
 }
 
 /**
- * Get the latest article timestamp from the database
+ * Run all orchestrator tasks (ingestion, image enrichment, archiving, revalidation)
+ * This runs in the background after the response is sent.
  */
-async function getLatestArticleTimestamp(): Promise<string | null> {
-  try {
-    const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from('articles')
-      .select('pub_date')
-      .order('pub_date', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error || !data) return null;
-    return data.pub_date;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Orchestrator endpoint that runs both ingestion and image enrichment sequentially
- * 
- * This combines two tasks into a single cron job:
- * 1. Ingest new articles from RSS feeds (with AI summarization)
- * 2. Enrich articles with missing images
- * 
- * Security: Protected by CRON_SECRET
- * 
- * Query params:
- * - debug=1: Return extended JSON with full proof-of-work details
- */
-export async function GET(request: NextRequest) {
-  const ranAt = new Date().toISOString();
-  const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || 'unknown';
-  const debugMode = request.nextUrl.searchParams.get('debug') === '1';
-  
-  // === PROOF OF WORK: Log cron hit immediately ===
-  console.log('========================================');
-  console.log(`CRON HIT: ${ranAt}`);
-  console.log(`HOST: ${host}`);
-  console.log('========================================');
-
-  // Validate cron secret
-  const cronSecret = request.headers.get('x-cron-secret');
-  const expectedSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  const isVercelCron = authHeader === `Bearer ${expectedSecret}`;
-
-  if (cronSecret !== expectedSecret && !isVercelCron) {
-    console.log(`CRON AUTH FAILED: ${ranAt} - Invalid secret`);
-    return NextResponse.json(
-      { error: 'Unauthorized: Invalid or missing cron secret' },
-      { status: 401 }
-    );
-  }
-
+async function runOrchestratorTasks(ranAt: string, host: string): Promise<void> {
   const startTime = Date.now();
   console.log('[orchestrator] Starting orchestrated tasks...');
 
@@ -126,13 +75,6 @@ export async function GET(request: NextRequest) {
   let articlesDuplicates = 0;
   let imagesEnriched = 0;
   let imagesFailed = 0;
-  let errorMessage: string | null = null;
-
-  const results = {
-    ingestion: null as any,
-    enrichment: null as any,
-    totalDurationMs: 0,
-  };
 
   try {
     // ========================================
@@ -143,18 +85,6 @@ export async function GET(request: NextRequest) {
     const ingestionStats = await runIngestion();
     articlesInserted = ingestionStats.totalItemsInserted;
     articlesDuplicates = ingestionStats.totalItemsDuplicates;
-    
-    results.ingestion = {
-      success: true,
-      newArticles: ingestionStats.totalItemsInserted,
-      duplicates: ingestionStats.totalItemsDuplicates,
-      sources: {
-        total: ingestionStats.totalSources,
-        successful: ingestionStats.successfulSources,
-      },
-      summarization: ingestionStats.summarization,
-      durationMs: ingestionStats.durationMs,
-    };
     
     console.log(
       `[orchestrator] Task 1 Complete: ${ingestionStats.totalItemsInserted} new articles ingested`
@@ -177,20 +107,11 @@ export async function GET(request: NextRequest) {
 
     if (fetchError) {
       console.error('[orchestrator] Error fetching articles for enrichment:', fetchError);
-      results.enrichment = {
-        success: false,
-        error: fetchError.message,
-      };
     } else if (!articlesToEnrich || articlesToEnrich.length === 0) {
-      results.enrichment = {
-        success: true,
-        checked: 0,
-        updated: 0,
-        message: 'No articles need image enrichment',
-      };
+      console.log('[orchestrator] No articles need image enrichment');
     } else {
       for (const article of articlesToEnrich) {
-        const { imageUrl, error } = await scrapeArticleImage(article.link);
+        const { imageUrl } = await scrapeArticleImage(article.link);
 
         if (imageUrl) {
           const { error: updateError } = await supabase
@@ -212,13 +133,6 @@ export async function GET(request: NextRequest) {
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
 
-      results.enrichment = {
-        success: true,
-        checked: articlesToEnrich.length,
-        updated: imagesEnriched,
-        failed: imagesFailed,
-      };
-
       console.log(
         `[orchestrator] Task 2 Complete: ${imagesEnriched} images enriched, ${imagesFailed} failed`
       );
@@ -230,8 +144,10 @@ export async function GET(request: NextRequest) {
     console.log('[orchestrator] Task 3: Archiving old finance articles...');
     let financeArchived = 0;
     try {
+      const supabaseForArchive = getSupabase();
+      
       // Get the 6 most recent finance article IDs (these should stay active)
-      const { data: recentFinanceArticles, error: recentError } = await supabase
+      const { data: recentFinanceArticles, error: recentError } = await supabaseForArchive
         .from('articles')
         .select('id')
         .eq('article_type', 'finance')
@@ -245,7 +161,7 @@ export async function GET(request: NextRequest) {
         const keepIds = new Set(recentFinanceArticles.map(a => a.id));
         
         // Get ALL non-archived finance articles to find ones to archive
-        const { data: allFinanceArticles, error: allError } = await supabase
+        const { data: allFinanceArticles, error: allError } = await supabaseForArchive
           .from('articles')
           .select('id')
           .eq('article_type', 'finance')
@@ -262,7 +178,7 @@ export async function GET(request: NextRequest) {
           if (idsToArchive.length > 0) {
             // Archive each article individually (more reliable)
             for (const id of idsToArchive) {
-              const { error: archiveError } = await supabase
+              const { error: archiveError } = await supabaseForArchive
                 .from('articles')
                 .update({ is_archived: true })
                 .eq('id', id);
@@ -286,9 +202,6 @@ export async function GET(request: NextRequest) {
     // ========================================
     // TASK 4: Revalidate UI cache
     // ========================================
-    // This ensures the homepage shows fresh data after ingestion.
-    // Without this, Next.js might serve stale cached pages even with force-dynamic
-    // because of edge/CDN caching or full route cache.
     console.log('[orchestrator] Task 4: Revalidating UI cache...');
     try {
       revalidatePath('/');
@@ -299,12 +212,39 @@ export async function GET(request: NextRequest) {
       console.error('[orchestrator] Revalidation error (non-fatal):', revalidateError);
     }
 
+    const totalDurationMs = Date.now() - startTime;
+
+    // === PROOF OF WORK: Log job success ===
+    console.log('========================================');
+    console.log(`JOB RESULT: ${new Date().toISOString()}`);
+    console.log(`STATUS: SUCCESS`);
+    console.log(`INSERTED: ${articlesInserted}`);
+    console.log(`DUPLICATES: ${articlesDuplicates}`);
+    console.log(`IMAGES_ENRICHED: ${imagesEnriched}`);
+    console.log(`IMAGES_FAILED: ${imagesFailed}`);
+    console.log(`DURATION: ${totalDurationMs}ms`);
+    console.log(`HOST: ${host}`);
+    console.log('========================================');
+
+    // Record successful job run to heartbeat table
+    await recordJobRun({
+      job_name: 'orchestrator',
+      ran_at: ranAt,
+      status: 'success',
+      duration_ms: totalDurationMs,
+      articles_inserted: articlesInserted,
+      articles_updated: articlesDuplicates,
+      images_enriched: imagesEnriched,
+      error_message: null,
+      host,
+    });
+
   } catch (error) {
     console.error('[orchestrator] Error during orchestration:', error);
-    errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    // Record the failed job run
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const durationMs = Date.now() - startTime;
+
+    // Record the failed job run
     await recordJobRun({
       job_name: 'orchestrator',
       ran_at: ranAt,
@@ -323,69 +263,73 @@ export async function GET(request: NextRequest) {
     console.log(`ERROR: ${errorMessage}`);
     console.log(`DURATION: ${durationMs}ms`);
     console.log('========================================');
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: 'Orchestration failed',
-        details: errorMessage,
-        results,
-      },
-      { status: 500 }
-    );
   }
+}
 
-  const totalDurationMs = Date.now() - startTime;
-  results.totalDurationMs = totalDurationMs;
-
-  // === PROOF OF WORK: Log job success ===
+/**
+ * Orchestrator endpoint that runs both ingestion and image enrichment sequentially
+ * 
+ * This combines multiple tasks into a single cron job:
+ * 1. Ingest new articles from RSS feeds (with AI summarization)
+ * 2. Enrich articles with missing images
+ * 3. Archive old finance articles
+ * 4. Revalidate UI cache
+ * 
+ * Security: Protected by CRON_SECRET
+ * 
+ * IMPORTANT: This endpoint returns immediately (within seconds) to satisfy
+ * cron-job.org's 30-second timeout. The actual work runs in the background
+ * using Vercel's waitUntil() function.
+ * 
+ * Check /api/job-status to verify the job completed successfully.
+ */
+export async function GET(request: NextRequest) {
+  const ranAt = new Date().toISOString();
+  const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || 'unknown';
+  
+  // === PROOF OF WORK: Log cron hit immediately ===
   console.log('========================================');
-  console.log(`JOB RESULT: ${new Date().toISOString()}`);
-  console.log(`STATUS: SUCCESS`);
-  console.log(`INSERTED: ${articlesInserted}`);
-  console.log(`DUPLICATES: ${articlesDuplicates}`);
-  console.log(`IMAGES_ENRICHED: ${imagesEnriched}`);
-  console.log(`IMAGES_FAILED: ${imagesFailed}`);
-  console.log(`DURATION: ${totalDurationMs}ms`);
+  console.log(`CRON HIT: ${ranAt}`);
   console.log(`HOST: ${host}`);
   console.log('========================================');
 
-  // Record successful job run to heartbeat table
+  // Validate cron secret
+  const cronSecret = request.headers.get('x-cron-secret');
+  const expectedSecret = process.env.CRON_SECRET;
+  const authHeader = request.headers.get('authorization');
+  const isVercelCron = authHeader === `Bearer ${expectedSecret}`;
+
+  if (cronSecret !== expectedSecret && !isVercelCron) {
+    console.log(`CRON AUTH FAILED: ${ranAt} - Invalid secret`);
+    return NextResponse.json(
+      { error: 'Unauthorized: Invalid or missing cron secret' },
+      { status: 401 }
+    );
+  }
+
+  // Record that the job has started
   await recordJobRun({
     job_name: 'orchestrator',
     ran_at: ranAt,
-    status: 'success',
-    duration_ms: totalDurationMs,
-    articles_inserted: articlesInserted,
-    articles_updated: articlesDuplicates,
-    images_enriched: imagesEnriched,
+    status: 'started',
+    duration_ms: 0,
+    articles_inserted: 0,
+    articles_updated: 0,
+    images_enriched: 0,
     error_message: null,
     host,
   });
 
-  // Get latest article timestamp for debug response
-  const latestArticleTimestamp = debugMode ? await getLatestArticleTimestamp() : null;
+  // Schedule the background work using waitUntil
+  // This allows us to return immediately while processing continues
+  waitUntil(runOrchestratorTasks(ranAt, host));
 
-  // === Response based on debug mode ===
-  if (debugMode) {
-    // Extended response for debugging (only when debug=1)
-    return NextResponse.json({
-      ok: true,
-      ranAt,
-      host,
-      inserted: articlesInserted,
-      duplicates: articlesDuplicates,
-      imagesEnriched,
-      imagesFailed,
-      latestArticleTimestamp,
-      durationMs: totalDurationMs,
-      results,
-    });
-  }
-
-  // Minimal response for normal operation
+  // Return immediately - cron-job.org will see this as success
+  // The actual work continues in the background
   return NextResponse.json({
     ok: true,
+    message: 'Job started. Check /api/job-status for completion status.',
+    startedAt: ranAt,
   });
 }
 
