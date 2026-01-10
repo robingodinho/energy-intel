@@ -18,7 +18,7 @@ export const maxDuration = 300;
 interface JobRunRecord {
   job_name: string;
   ran_at: string;
-  status: 'success' | 'error' | 'started';
+  status: 'success' | 'error';
   duration_ms: number;
   articles_inserted: number;
   articles_updated: number;
@@ -28,8 +28,7 @@ interface JobRunRecord {
 }
 
 /**
- * Upsert a job run record to the job_runs table for heartbeat tracking.
- * This allows verifying cron runs without Vercel paid logs.
+ * Record job run to the job_runs table for heartbeat tracking.
  */
 async function recordJobRun(record: JobRunRecord): Promise<void> {
   try {
@@ -52,10 +51,9 @@ async function recordJobRun(record: JobRunRecord): Promise<void> {
       });
 
     if (error) {
-      // Log but don't fail the job if heartbeat recording fails
       console.error('[orchestrator] Failed to record job run:', error.message);
     } else {
-      console.log('[orchestrator] Job run recorded to job_runs table');
+      console.log('[orchestrator] Job run recorded successfully');
     }
   } catch (err) {
     console.error('[orchestrator] Error recording job run:', err);
@@ -63,91 +61,66 @@ async function recordJobRun(record: JobRunRecord): Promise<void> {
 }
 
 /**
- * Run all orchestrator tasks (ingestion, image enrichment, archiving, revalidation)
- * This runs in the background after the response is sent.
+ * Run all orchestrator tasks in the background
  */
 async function runOrchestratorTasks(ranAt: string, host: string): Promise<void> {
   const startTime = Date.now();
-  console.log('[orchestrator] Starting orchestrated tasks...');
+  console.log('[orchestrator] Background tasks starting...');
 
-  // Track results for proof of work
   let articlesInserted = 0;
   let articlesDuplicates = 0;
   let imagesEnriched = 0;
   let imagesFailed = 0;
 
   try {
-    // ========================================
     // TASK 1: Run Ingestion
-    // ========================================
     console.log('[orchestrator] Task 1: Starting ingestion...');
-    
     const ingestionStats = await runIngestion();
     articlesInserted = ingestionStats.totalItemsInserted;
     articlesDuplicates = ingestionStats.totalItemsDuplicates;
-    
-    console.log(
-      `[orchestrator] Task 1 Complete: ${ingestionStats.totalItemsInserted} new articles ingested`
-    );
+    console.log(`[orchestrator] Task 1 Complete: ${articlesInserted} new, ${articlesDuplicates} duplicates`);
 
-    // ========================================
     // TASK 2: Enrich Images
-    // ========================================
     console.log('[orchestrator] Task 2: Starting image enrichment...');
-    
     const supabase = getSupabase();
-    const limit = 15; // Process 15 articles per run
 
     const { data: articlesToEnrich, error: fetchError } = await supabase
       .from('articles')
       .select('id, link, source, title')
       .is('image_url', null)
       .order('pub_date', { ascending: false })
-      .limit(limit);
+      .limit(15);
 
     if (fetchError) {
-      console.error('[orchestrator] Error fetching articles for enrichment:', fetchError);
-    } else if (!articlesToEnrich || articlesToEnrich.length === 0) {
-      console.log('[orchestrator] No articles need image enrichment');
-    } else {
+      console.error('[orchestrator] Error fetching articles:', fetchError);
+    } else if (articlesToEnrich && articlesToEnrich.length > 0) {
       for (const article of articlesToEnrich) {
         const { imageUrl } = await scrapeArticleImage(article.link);
-
         if (imageUrl) {
           const { error: updateError } = await supabase
             .from('articles')
             .update({ image_url: imageUrl })
             .eq('id', article.id);
-
-          if (updateError) {
-            console.error(`[orchestrator] Failed to update image for ${article.id}:`, updateError);
-            imagesFailed++;
-          } else {
+          if (!updateError) {
             imagesEnriched++;
+          } else {
+            imagesFailed++;
           }
         } else {
           imagesFailed++;
         }
-
-        // Small delay between requests
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
-
-      console.log(
-        `[orchestrator] Task 2 Complete: ${imagesEnriched} images enriched, ${imagesFailed} failed`
-      );
+      console.log(`[orchestrator] Task 2 Complete: ${imagesEnriched} enriched, ${imagesFailed} failed`);
+    } else {
+      console.log('[orchestrator] Task 2: No articles need images');
     }
 
-    // ========================================
-    // TASK 3: Archive old finance articles (keep only 6 most recent)
-    // ========================================
+    // TASK 3: Archive old finance articles (keep 6 most recent)
     console.log('[orchestrator] Task 3: Archiving old finance articles...');
     let financeArchived = 0;
     try {
-      const supabaseForArchive = getSupabase();
-      
-      // Get the 6 most recent finance article IDs (these should stay active)
-      const { data: recentFinanceArticles, error: recentError } = await supabaseForArchive
+      const { data: recentFinance } = await supabase
         .from('articles')
         .select('id')
         .eq('article_type', 'finance')
@@ -155,78 +128,43 @@ async function runOrchestratorTasks(ranAt: string, host: string): Promise<void> 
         .order('pub_date', { ascending: false })
         .limit(6);
 
-      if (recentError) {
-        console.error('[orchestrator] Error fetching recent finance articles:', recentError);
-      } else if (recentFinanceArticles && recentFinanceArticles.length > 0) {
-        const keepIds = new Set(recentFinanceArticles.map(a => a.id));
+      if (recentFinance && recentFinance.length > 0) {
+        const keepIds = new Set(recentFinance.map(a => a.id));
         
-        // Get ALL non-archived finance articles to find ones to archive
-        const { data: allFinanceArticles, error: allError } = await supabaseForArchive
+        const { data: allFinance } = await supabase
           .from('articles')
           .select('id')
           .eq('article_type', 'finance')
           .eq('is_archived', false);
 
-        if (allError) {
-          console.error('[orchestrator] Error fetching all finance articles:', allError);
-        } else if (allFinanceArticles) {
-          // Find IDs that are NOT in the top 6
-          const idsToArchive = allFinanceArticles
-            .filter(a => !keepIds.has(a.id))
-            .map(a => a.id);
-
-          if (idsToArchive.length > 0) {
-            // Archive each article individually (more reliable)
-            for (const id of idsToArchive) {
-              const { error: archiveError } = await supabaseForArchive
-                .from('articles')
-                .update({ is_archived: true })
-                .eq('id', id);
-
-              if (archiveError) {
-                console.error(`[orchestrator] Error archiving article ${id}:`, archiveError);
-              } else {
-                financeArchived++;
-              }
-            }
-            console.log(`[orchestrator] Task 3 Complete: ${financeArchived} finance articles archived`);
-          } else {
-            console.log('[orchestrator] Task 3 Complete: No finance articles needed archiving');
+        if (allFinance) {
+          const idsToArchive = allFinance.filter(a => !keepIds.has(a.id)).map(a => a.id);
+          for (const id of idsToArchive) {
+            await supabase.from('articles').update({ is_archived: true }).eq('id', id);
+            financeArchived++;
           }
         }
       }
-    } catch (archiveErr) {
-      console.error('[orchestrator] Finance archive error (non-fatal):', archiveErr);
+      console.log(`[orchestrator] Task 3 Complete: ${financeArchived} archived`);
+    } catch (e) {
+      console.error('[orchestrator] Archive error (non-fatal):', e);
     }
 
-    // ========================================
     // TASK 4: Revalidate UI cache
-    // ========================================
-    console.log('[orchestrator] Task 4: Revalidating UI cache...');
+    console.log('[orchestrator] Task 4: Revalidating cache...');
     try {
       revalidatePath('/');
       revalidatePath('/about');
       revalidatePath('/finance');
-      console.log('[orchestrator] UI cache revalidated for /, /about, and /finance');
-    } catch (revalidateError) {
-      console.error('[orchestrator] Revalidation error (non-fatal):', revalidateError);
+      console.log('[orchestrator] Task 4 Complete: Cache revalidated');
+    } catch (e) {
+      console.error('[orchestrator] Revalidate error (non-fatal):', e);
     }
 
+    // Record success
     const totalDurationMs = Date.now() - startTime;
+    console.log(`[orchestrator] ALL TASKS COMPLETE in ${totalDurationMs}ms`);
 
-    // === PROOF OF WORK: Log job success ===
-    console.log('========================================');
-    console.log(`JOB RESULT: ${new Date().toISOString()}`);
-    console.log(`STATUS: SUCCESS`);
-    console.log(`INSERTED: ${articlesInserted}`);
-    console.log(`DUPLICATES: ${articlesDuplicates}`);
-    console.log(`IMAGES_ENRICHED: ${imagesEnriched}`);
-    console.log(`IMAGES_FAILED: ${imagesFailed}`);
-    console.log(`DURATION: ${totalDurationMs}ms`);
-    console.log(`HOST: ${host}`);
-    console.log('========================================');
-
-    // Record successful job run to heartbeat table
     await recordJobRun({
       job_name: 'orchestrator',
       ran_at: ranAt,
@@ -240,11 +178,10 @@ async function runOrchestratorTasks(ranAt: string, host: string): Promise<void> 
     });
 
   } catch (error) {
-    console.error('[orchestrator] Error during orchestration:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const durationMs = Date.now() - startTime;
+    console.error(`[orchestrator] FATAL ERROR: ${errorMessage}`);
 
-    // Record the failed job run
     await recordJobRun({
       job_name: 'orchestrator',
       ran_at: ranAt,
@@ -256,38 +193,21 @@ async function runOrchestratorTasks(ranAt: string, host: string): Promise<void> 
       error_message: errorMessage,
       host,
     });
-
-    // === PROOF OF WORK: Log job failure ===
-    console.log('========================================');
-    console.log(`JOB FAILED: ${new Date().toISOString()}`);
-    console.log(`ERROR: ${errorMessage}`);
-    console.log(`DURATION: ${durationMs}ms`);
-    console.log('========================================');
   }
 }
 
 /**
- * Orchestrator endpoint that runs both ingestion and image enrichment sequentially
+ * Orchestrator endpoint
  * 
- * This combines multiple tasks into a single cron job:
- * 1. Ingest new articles from RSS feeds (with AI summarization)
- * 2. Enrich articles with missing images
- * 3. Archive old finance articles
- * 4. Revalidate UI cache
+ * Returns immediately with 200 OK, then processes in background.
+ * This is compatible with cron-job.org's 30-second timeout.
  * 
- * Security: Protected by CRON_SECRET
- * 
- * IMPORTANT: This endpoint returns immediately (within seconds) to satisfy
- * cron-job.org's 30-second timeout. The actual work runs in the background
- * using Vercel's waitUntil() function.
- * 
- * Check /api/job-status to verify the job completed successfully.
+ * Check /api/job-status to verify the job completed.
  */
 export async function GET(request: NextRequest) {
   const ranAt = new Date().toISOString();
   const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || 'unknown';
   
-  // === PROOF OF WORK: Log cron hit immediately ===
   console.log('========================================');
   console.log(`CRON HIT: ${ranAt}`);
   console.log(`HOST: ${host}`);
@@ -300,40 +220,24 @@ export async function GET(request: NextRequest) {
   const isVercelCron = authHeader === `Bearer ${expectedSecret}`;
 
   if (cronSecret !== expectedSecret && !isVercelCron) {
-    console.log(`CRON AUTH FAILED: ${ranAt} - Invalid secret`);
+    console.log(`AUTH FAILED: ${ranAt}`);
     return NextResponse.json(
       { error: 'Unauthorized: Invalid or missing cron secret' },
       { status: 401 }
     );
   }
 
-  // Record that the job has started
-  await recordJobRun({
-    job_name: 'orchestrator',
-    ran_at: ranAt,
-    status: 'started',
-    duration_ms: 0,
-    articles_inserted: 0,
-    articles_updated: 0,
-    images_enriched: 0,
-    error_message: null,
-    host,
-  });
-
-  // Schedule the background work using waitUntil
-  // This allows us to return immediately while processing continues
+  // Schedule background work - this continues after response is sent
   waitUntil(runOrchestratorTasks(ranAt, host));
 
-  // Return immediately - cron-job.org will see this as success
-  // The actual work continues in the background
+  // Return immediately to satisfy cron-job.org's 30-second timeout
   return NextResponse.json({
     ok: true,
-    message: 'Job started. Check /api/job-status for completion status.',
+    message: 'Job started. Check /api/job-status for results.',
     startedAt: ranAt,
   });
 }
 
-// Also support POST for manual triggers
 export async function POST(request: NextRequest) {
   return GET(request);
 }
