@@ -30,10 +30,10 @@ interface JobRunRecord {
 /**
  * Record job run to the job_runs table
  */
-async function recordJobRun(record: JobRunRecord): Promise<void> {
+async function recordJobRun(record: JobRunRecord): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = getSupabase();
-    await supabase.from('job_runs').upsert({
+    const { error } = await supabase.from('job_runs').upsert({
       job_name: record.job_name,
       ran_at: record.ran_at,
       status: record.status,
@@ -44,8 +44,17 @@ async function recordJobRun(record: JobRunRecord): Promise<void> {
       error_message: record.error_message,
       host: record.host,
     }, { onConflict: 'job_name' });
+    
+    if (error) {
+      console.error('[orchestrator] Supabase error:', error.message, error.details, error.hint);
+      return { success: false, error: error.message };
+    }
+    console.log('[orchestrator] Job recorded successfully');
+    return { success: true };
   } catch (err) {
-    console.error('[orchestrator] Error recording job:', err);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[orchestrator] Exception recording job:', msg);
+    return { success: false, error: msg };
   }
 }
 
@@ -167,7 +176,7 @@ export async function GET(request: NextRequest) {
     console.log(`[orchestrator] SUCCESS in ${durationMs}ms. Tasks: ${tasksCompleted.join(', ')}`);
 
     // Record success
-    await recordJobRun({
+    const dbResult = await recordJobRun({
       job_name: 'orchestrator',
       ran_at: ranAt,
       status: 'success',
@@ -186,6 +195,8 @@ export async function GET(request: NextRequest) {
       duplicates: articlesDuplicates,
       imagesEnriched,
       tasksCompleted,
+      dbRecorded: dbResult.success,
+      dbError: dbResult.error || null,
     });
 
   } catch (error) {
