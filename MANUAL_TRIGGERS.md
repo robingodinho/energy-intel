@@ -28,25 +28,25 @@ Since cron jobs are disabled, you can manually trigger the data updates using th
 
 ### Option 1: Using Browser (for testing)
 Add your CRON_SECRET as a header using a browser extension like ModHeader, then visit:
-- `https://energy-intel.org/api/orchestrator`
+- `https://enerva.ai/api/orchestrator`
 
 ### Option 2: Using cURL
 ```bash
-curl -X GET https://energy-intel.org/api/orchestrator \
+curl -X GET https://enerva.ai/api/orchestrator \
   -H "x-cron-secret: YOUR_CRON_SECRET"
 ```
 
 ### Option 3: Using PowerShell
 ```powershell
 $headers = @{"x-cron-secret" = "YOUR_CRON_SECRET"}
-Invoke-RestMethod -Uri "https://energy-intel.org/api/orchestrator" -Headers $headers
+Invoke-RestMethod -Uri "https://enerva.ai/api/orchestrator" -Headers $headers
 ```
 
 ### Option 4: Debug Mode (Extended Response)
 Add `?debug=1` to get detailed proof-of-work in the response:
 ```powershell
 $headers = @{"x-cron-secret" = "YOUR_CRON_SECRET"}
-Invoke-RestMethod -Uri "https://energy-intel.org/api/orchestrator?debug=1" -Headers $headers
+Invoke-RestMethod -Uri "https://enerva.ai/api/orchestrator?debug=1" -Headers $headers
 ```
 
 Response includes: `ranAt`, `host`, `inserted`, `duplicates`, `imagesEnriched`, `latestArticleTimestamp`, `durationMs`
@@ -54,7 +54,7 @@ Response includes: `ranAt`, `host`, `inserted`, `duplicates`, `imagesEnriched`, 
 ### Option 5: Check Job Status (Verify Cron is Working)
 ```powershell
 $headers = @{"x-cron-secret" = "YOUR_CRON_SECRET"}
-Invoke-RestMethod -Uri "https://energy-intel.org/api/job-status" -Headers $headers
+Invoke-RestMethod -Uri "https://enerva.ai/api/job-status" -Headers $headers
 ```
 
 This returns the most recent job run, including when it ran and what it did.
@@ -64,14 +64,14 @@ This returns the most recent job run, including when it ran and what it did.
 ### Setup
 1. Create account at [cron-job.org](https://cron-job.org)
 2. Create a new cron job:
-   - **URL**: `https://energy-intel.org/api/orchestrator`
+   - **URL**: `https://enerva.ai/api/orchestrator`
    - **Schedule**: Every 6 hours
    - **Header**: `x-cron-secret: YOUR_CRON_SECRET`
 
 ### Verifying It Works
 1. **Check cron-job.org dashboard**: Should show "Successful (200 OK)"
 2. **Check job_runs table**: Use `/api/job-status` endpoint or Supabase dashboard
-3. **Check the website**: Visit https://energy-intel.org and look for new articles
+3. **Check the website**: Visit https://enerva.ai and look for new articles
 
 ## Database Heartbeat Table
 
