@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { revalidatePath } from 'next/cache';
 import { runIngestion } from '@/lib/ingest';
 import { getSupabase } from '@/lib/db';
@@ -7,10 +8,8 @@ import { scrapeArticleImage } from '@/lib/scrapeImage';
 // Force dynamic rendering - no caching
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-export const maxDuration = 60; // 60 seconds max (Vercel hobby limit)
-
-// Time limit for the job - leave buffer for response
-const JOB_TIME_LIMIT_MS = 25000; // 25 seconds
+// Allow longer background time; response returns immediately
+export const maxDuration = 300;
 
 /**
  * Job run record for heartbeat tracking
@@ -111,79 +110,49 @@ async function recordJobRun(record: JobRunRecord): Promise<{ success: boolean; e
 }
 
 /**
- * Check if we should stop due to time limit
+ * Run the orchestrated tasks in the background.
+ * This can take several minutes; the HTTP response returns immediately.
  */
-function isTimeLimitExceeded(startTime: number): boolean {
-  return Date.now() - startTime > JOB_TIME_LIMIT_MS;
-}
-
-/**
- * Orchestrator endpoint - runs synchronously with time limits
- */
-export async function GET(request: NextRequest) {
-  const ranAt = new Date().toISOString();
+async function runOrchestratorTasks(ranAt: string, host: string) {
   const startTime = Date.now();
-  const host = request.headers.get('host') || 'unknown';
-  
-  console.log(`[orchestrator] CRON HIT: ${ranAt} from ${host}`);
-
-  // Validate cron secret
-  const cronSecret = request.headers.get('x-cron-secret');
-  const expectedSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  const isVercelCron = authHeader === `Bearer ${expectedSecret}`;
-
-  if (cronSecret !== expectedSecret && !isVercelCron) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   let articlesInserted = 0;
   let articlesDuplicates = 0;
   let imagesEnriched = 0;
-  let tasksCompleted: string[] = [];
 
   try {
-    // TASK 1: Run Ingestion (this is the core task)
+    // TASK 1: Ingestion
     console.log('[orchestrator] Task 1: Ingestion...');
     const ingestionStats = await runIngestion();
     articlesInserted = ingestionStats.totalItemsInserted;
     articlesDuplicates = ingestionStats.totalItemsDuplicates;
-    tasksCompleted.push('ingestion');
     console.log(`[orchestrator] Ingestion done: ${articlesInserted} new`);
 
-    // TASK 2: Enrich a few images (if time permits)
-    if (!isTimeLimitExceeded(startTime)) {
-      console.log('[orchestrator] Task 2: Image enrichment...');
-      const supabase = getSupabase();
-      
-      // Only process 3 images to stay within time limit
-      const { data: articles } = await supabase
-        .from('articles')
-        .select('id, link')
-        .is('image_url', null)
-        .order('pub_date', { ascending: false })
-        .limit(3);
+    // TASK 2: Image enrichment (process a few each run)
+    console.log('[orchestrator] Task 2: Image enrichment...');
+    const supabase = getSupabase();
+    const { data: articles } = await supabase
+      .from('articles')
+      .select('id, link')
+      .is('image_url', null)
+      .order('pub_date', { ascending: false })
+      .limit(15);
 
-      if (articles) {
-        for (const article of articles) {
-          if (isTimeLimitExceeded(startTime)) break;
-          
-          const { imageUrl } = await scrapeArticleImage(article.link);
-          if (imageUrl) {
-            await supabase.from('articles').update({ image_url: imageUrl }).eq('id', article.id);
-            imagesEnriched++;
-          }
+    if (articles) {
+      for (const article of articles) {
+        const { imageUrl } = await scrapeArticleImage(article.link);
+        if (imageUrl) {
+          await supabase.from('articles').update({ image_url: imageUrl }).eq('id', article.id);
+          imagesEnriched++;
         }
+        // small delay to be polite
+        await new Promise(res => setTimeout(res, 200));
       }
-      tasksCompleted.push('images');
-      console.log(`[orchestrator] Images done: ${imagesEnriched} enriched`);
     }
 
-    // TASK 3: Archive old finance articles (if time permits)
-    if (!isTimeLimitExceeded(startTime)) {
-      console.log('[orchestrator] Task 3: Archiving...');
-      const supabase = getSupabase();
-      
+    // TASK 3: Archive old finance articles
+    console.log('[orchestrator] Task 3: Archiving finance articles...');
+    try {
       const { data: recentFinance } = await supabase
         .from('articles')
         .select('id')
@@ -194,7 +163,7 @@ export async function GET(request: NextRequest) {
 
       if (recentFinance && recentFinance.length > 0) {
         const keepIds = new Set(recentFinance.map(a => a.id));
-        
+
         const { data: allFinance } = await supabase
           .from('articles')
           .select('id')
@@ -204,31 +173,28 @@ export async function GET(request: NextRequest) {
         if (allFinance) {
           const toArchive = allFinance.filter(a => !keepIds.has(a.id));
           for (const article of toArchive) {
-            if (isTimeLimitExceeded(startTime)) break;
             await supabase.from('articles').update({ is_archived: true }).eq('id', article.id);
           }
         }
       }
-      tasksCompleted.push('archive');
+    } catch (e) {
+      console.error('[orchestrator] Archive error (non-fatal):', e);
     }
 
     // TASK 4: Revalidate cache
-    if (!isTimeLimitExceeded(startTime)) {
-      try {
-        revalidatePath('/');
-        revalidatePath('/about');
-        revalidatePath('/finance');
-        tasksCompleted.push('revalidate');
-      } catch (e) {
-        console.error('[orchestrator] Revalidate error:', e);
-      }
+    console.log('[orchestrator] Task 4: Revalidating cache...');
+    try {
+      revalidatePath('/');
+      revalidatePath('/about');
+      revalidatePath('/finance');
+    } catch (e) {
+      console.error('[orchestrator] Revalidate error (non-fatal):', e);
     }
 
     const durationMs = Date.now() - startTime;
-    console.log(`[orchestrator] SUCCESS in ${durationMs}ms. Tasks: ${tasksCompleted.join(', ')}`);
+    console.log(`[orchestrator] SUCCESS in ${durationMs}ms`);
 
-    // Record success
-    const dbResult = await recordJobRun({
+    await recordJobRun({
       job_name: 'orchestrator',
       ran_at: ranAt,
       status: 'success',
@@ -239,23 +205,10 @@ export async function GET(request: NextRequest) {
       error_message: null,
       host,
     });
-
-    return NextResponse.json({
-      ok: true,
-      durationMs,
-      articlesInserted,
-      duplicates: articlesDuplicates,
-      imagesEnriched,
-      tasksCompleted,
-      dbRecorded: dbResult.success,
-      dbError: dbResult.error || null,
-      dbData: dbResult.data || null,
-    });
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const durationMs = Date.now() - startTime;
-    console.error(`[orchestrator] ERROR: ${errorMessage}`);
+    console.error('[orchestrator] ERROR:', errorMessage);
 
     await recordJobRun({
       job_name: 'orchestrator',
@@ -268,13 +221,37 @@ export async function GET(request: NextRequest) {
       error_message: errorMessage,
       host,
     });
-
-    return NextResponse.json({
-      ok: false,
-      error: errorMessage,
-      durationMs,
-    }, { status: 500 });
   }
+}
+
+/**
+ * Orchestrator endpoint - returns immediately, work continues in background.
+ */
+export async function GET(request: NextRequest) {
+  const ranAt = new Date().toISOString();
+  const host = request.headers.get('host') || 'unknown';
+
+  console.log(`[orchestrator] CRON HIT: ${ranAt} from ${host}`);
+
+  // Validate cron secret
+  const cronSecret = request.headers.get('x-cron-secret');
+  const expectedSecret = process.env.CRON_SECRET;
+  const authHeader = request.headers.get('authorization');
+  const isVercelCron = authHeader === `Bearer ${expectedSecret}`;
+
+  if (cronSecret !== expectedSecret && !isVercelCron) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Kick off background work
+  waitUntil(runOrchestratorTasks(ranAt, host));
+
+  // Respond immediately to satisfy cron-job.org timeout
+  return NextResponse.json({
+    ok: true,
+    message: 'Job started. Check /api/job-status for results.',
+    startedAt: ranAt,
+  });
 }
 
 export async function POST(request: NextRequest) {
