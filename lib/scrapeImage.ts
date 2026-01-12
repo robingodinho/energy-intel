@@ -40,7 +40,8 @@ function getRandomUserAgent(): string {
  * 2. twitter:image / twitter:image:src
  * 3. link rel="image_src"
  * 4. Schema.org JSON-LD image
- * 5. First large image in article/main content
+ * 5. AMP and data-src/srcset images
+ * 6. First large image in article/main content
  */
 function extractImageFromHtml(html: string, baseUrl: string): string | null {
   // 1. OpenGraph image
@@ -124,7 +125,29 @@ function extractImageFromHtml(html: string, baseUrl: string): string | null {
     }
   }
 
-  // 6. Last resort: first substantial img tag
+  // 6. AMP images and data-src / srcset fallbacks
+  const ampImgPattern = /<amp-img[^>]+(src|data-src|srcset)=["']([^"']+)["'][^>]*>/i;
+  const ampMatch = html.match(ampImgPattern);
+  if (ampMatch && ampMatch[2]) {
+    const candidate = resolveSrcOrSrcset(ampMatch[2].trim(), baseUrl);
+    if (candidate && isLikelyGoodImage(candidate)) return candidate;
+  }
+
+  const dataSrcPattern = /<img[^>]+(data-src|data-original|data-lazy-src)=["']([^"']+)["'][^>]*>/i;
+  const dataSrcMatch = html.match(dataSrcPattern);
+  if (dataSrcMatch && dataSrcMatch[2]) {
+    const candidate = resolveImageUrl(dataSrcMatch[2].trim(), baseUrl);
+    if (candidate && isLikelyGoodImage(candidate)) return candidate;
+  }
+
+  const srcsetPattern = /<img[^>]+srcset=["']([^"']+)["'][^>]*>/i;
+  const srcsetMatch = html.match(srcsetPattern);
+  if (srcsetMatch && srcsetMatch[1]) {
+    const candidate = resolveSrcOrSrcset(srcsetMatch[1].trim(), baseUrl);
+    if (candidate && isLikelyGoodImage(candidate)) return candidate;
+  }
+
+  // 7. Last resort: first substantial img tag
   const imgPattern = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
   let imgMatch;
   while ((imgMatch = imgPattern.exec(html)) !== null) {
@@ -253,6 +276,16 @@ function resolveImageUrl(rawUrl: string, baseUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolve a src or srcset value (takes the first URL in srcset)
+ */
+function resolveSrcOrSrcset(raw: string, baseUrl: string): string | null {
+  if (!raw) return null;
+  // If it's a srcset, take the first URL before whitespace
+  const first = raw.split(',')[0].trim().split(' ')[0];
+  return resolveImageUrl(first, baseUrl);
 }
 
 /**
