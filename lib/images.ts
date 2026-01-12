@@ -27,13 +27,26 @@ const CATEGORY_IMAGES: Record<ArticleCategory | 'default', string> = {
  * @param article - Article with optional image_url and category
  * @returns Image URL string
  */
+const SOURCE_FALLBACK_IMAGES: Record<string, string> = {
+  'Utility Dive': 'https://www.utilitydive.com/img/utility-dive-og-image.png',
+  'Power Magazine': 'https://www.powermag.com/wp-content/uploads/2023/01/power-magazine-logo.png',
+  'Yahoo Finance': 'https://s.yimg.com/cv/apiv2/cv/apiv2/social/images/yahoo-finance-default-logo.png',
+  'CNBC Energy': 'https://image.cnbcfm.com/api/v1/image/106989771-1645799587799-gettyimages-1238765092-AFP_324P9VM.jpeg',
+};
+
 export function getArticleImage(article: {
   image_url?: string | null;
   category?: ArticleCategory | string;
+  source?: string | null;
 }): string {
   // Use scraped image_url if available
   if (article.image_url && isValidImageUrl(article.image_url)) {
     return article.image_url;
+  }
+
+  // Source-based fallback (brand images) if scraping failed
+  if (article.source && SOURCE_FALLBACK_IMAGES[article.source]) {
+    return SOURCE_FALLBACK_IMAGES[article.source];
   }
 
   // Use category-based placeholder

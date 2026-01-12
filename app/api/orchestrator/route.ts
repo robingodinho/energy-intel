@@ -136,7 +136,7 @@ async function runOrchestratorTasks(ranAt: string, host: string) {
       .select('id, link')
       .is('image_url', null)
       .order('pub_date', { ascending: false })
-      .limit(15);
+      .limit(30); // increase batch size to reduce misses
 
     if (articles) {
       for (const article of articles) {
@@ -145,8 +145,8 @@ async function runOrchestratorTasks(ranAt: string, host: string) {
           await supabase.from('articles').update({ image_url: imageUrl }).eq('id', article.id);
           imagesEnriched++;
         }
-        // small delay to be polite
-        await new Promise(res => setTimeout(res, 200));
+        // small delay to be polite (slightly higher to reduce throttling)
+        await new Promise(res => setTimeout(res, 250));
       }
     }
 

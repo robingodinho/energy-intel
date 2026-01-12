@@ -191,6 +191,13 @@ function isLikelyGoodImage(url: string): boolean {
     'yimg.com',              // Yahoo Finance images/logos
     's.yimg.com',            // Yahoo CDN
     'yahoo_finance',         // Yahoo Finance branded images
+    'divecdn.com',           // Utility Dive CDN
+    'imgproxy.divecdn.com',  // Utility Dive proxied images
+    'utilitydive.com',       // Utility Dive domain
+    'powermag.com',          // Power Magazine
+    'benzinga',              // Benzinga
+    'foolcdn',               // Motley Fool
+    'marketwatch',           // MarketWatch
   ];
   
   for (const brand of allowedBrandImages) {
