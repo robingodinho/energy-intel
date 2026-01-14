@@ -100,6 +100,8 @@ function toArticleInsert(article: PartialArticle, summary: string): ArticleInser
     source: article.source,
     category: article.category as ArticleCategory,
     summary,
+    // Preserve the source article type so finance feeds are queryable
+    article_type: article.article_type || 'policy',
   };
 }
 
