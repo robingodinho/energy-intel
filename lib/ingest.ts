@@ -1,8 +1,8 @@
-import { getEnabledFeeds } from './feeds';
+import { getEnabledFeeds, getEnabledFeedsByType } from './feeds';
 import { fetchAllFeeds, getFetchStats, FetchFeedResult } from './fetchFeed';
 import { normalizeFeedItems, PartialArticle } from './normalizeFeedItem';
 import { insertArticles, getExistingArticleIds, getExistingArticleTitles, ArticleInsert } from './db';
-import { ArticleCategory } from '@/types/article';
+import { ArticleCategory, FeedSource } from '@/types/article';
 import { summarizeArticle, isOpenAIConfigured, getFallbackSummary } from './summarize';
 
 // Check if we're in development mode
@@ -159,14 +159,14 @@ function devLog(message: string, data?: unknown) {
  * 6. Insert into Supabase (with duplicate handling)
  * 7. Return detailed statistics
  */
-export async function runIngestion(): Promise<IngestionStats> {
+export async function runIngestion(feedsOverride?: FeedSource[]): Promise<IngestionStats> {
   const startedAt = new Date().toISOString();
   const startTime = Date.now();
   
   devLog('Starting ingestion run...');
 
   // Get enabled feeds
-  const feeds = getEnabledFeeds();
+  const feeds = feedsOverride ?? getEnabledFeeds();
   devLog(`Found ${feeds.length} enabled feeds`);
 
   // Fetch all feeds in parallel

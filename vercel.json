@@ -4,6 +4,10 @@
     {
       "path": "/api/orchestrator",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/finance/ingest",
+      "schedule": "0 */3 * * *"
     }
   ]
 }
