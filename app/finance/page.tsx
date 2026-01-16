@@ -196,8 +196,8 @@ export default function FinancePage() {
         const [stocksRes, forexRes, articlesRes, archivedRes, historyRes, summariesRes] = await Promise.all([
           fetch('/api/finance/stocks').then(r => r.json()).catch(() => ({ stocks: FALLBACK_STOCKS })),
           fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
-          fetch('/api/finance/articles?limit=6').then(r => r.json()).catch(() => ({ articles: [] })),
-          fetch('/api/finance/articles?archived=true&limit=9').then(r => r.json()).catch(() => ({ articles: [] })),
+          fetch('/api/finance/articles?limit=6', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
+          fetch('/api/finance/articles?archived=true&limit=9', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
           fetch('/api/finance/market-summary').then(r => r.json()).catch(() => ({ summaries: [] })),
         ]);
