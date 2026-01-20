@@ -176,6 +176,41 @@ const FINANCE_SOURCES: FeedSource[] = [
     articleType: 'finance',
     // ❌ May require validation - MarketWatch real-time headlines
   },
+  {
+    name: 'Mozambique Energy (Google News)',
+    url: 'https://news.google.com/rss/search?q=Mozambique%20energy',
+    enabled: true,
+    articleType: 'finance',
+    // Broad Mozambique energy coverage via Google News
+  },
+  {
+    name: 'Mozambique LNG Finance (Google News)',
+    url: 'https://news.google.com/rss/search?q=Mozambique%20gas%20LNG%20energy%20finance',
+    enabled: true,
+    articleType: 'finance',
+    // More finance-focused Mozambique LNG/energy items via Google News
+  },
+  {
+    name: 'Club of Mozambique',
+    url: 'https://clubofmozambique.com/feed/',
+    enabled: true,
+    articleType: 'finance',
+    // General Mozambique news; pipeline filtering + categorization will keep energy items
+  },
+  {
+    name: 'ESI Africa Mozambique',
+    url: 'https://www.esi-africa.com/tag/mozambique/feed/',
+    enabled: false,
+    articleType: 'finance',
+    // Enable after verifying availability; focused on power/energy sector
+  },
+  {
+    name: 'Engineering News Energy',
+    url: 'https://www.engineeringnews.co.za/page/energy/feed',
+    enabled: false,
+    articleType: 'finance',
+    // Not Mozambique-only; can be title-filtered later for Mozambique if needed
+  },
 ];
 
 // =============================================================================

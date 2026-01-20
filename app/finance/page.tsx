@@ -76,7 +76,16 @@ const FALLBACK_MARKET_SUMMARIES: MarketSummary[] = [
   { id: 1, headline: 'Loading market data...', summary: 'AI-generated market summaries are being prepared.' },
 ];
 
-type Market = 'US';
+// Mozambique-focused sources to filter articles when MZ market is selected
+const MOZ_SOURCES = new Set<string>([
+  'Mozambique Energy (Google News)',
+  'Mozambique LNG Finance (Google News)',
+  'Club of Mozambique',
+  'ESI Africa Mozambique',
+  'Engineering News Energy',
+]);
+
+type Market = 'US' | 'MZ';
 
 // Price point interface for historical data
 interface PricePoint {
@@ -253,6 +262,27 @@ export default function FinancePage() {
     });
   };
 
+  // Market-specific article slices (filter Mozambique sources/titles when MZ is selected)
+  const visibleRecentArticles = useMemo(() => {
+    if (selectedMarket !== 'MZ') return articles;
+    return articles.filter(
+      (a) =>
+        MOZ_SOURCES.has(a.source) ||
+        a.title?.toLowerCase().includes('mozambique') ||
+        a.summary?.toLowerCase().includes('mozambique')
+    );
+  }, [articles, selectedMarket]);
+
+  const visibleArchivedArticles = useMemo(() => {
+    if (selectedMarket !== 'MZ') return archivedArticles;
+    return archivedArticles.filter(
+      (a) =>
+        MOZ_SOURCES.has(a.source) ||
+        a.title?.toLowerCase().includes('mozambique') ||
+        a.summary?.toLowerCase().includes('mozambique')
+    );
+  }, [archivedArticles, selectedMarket]);
+
   return (
     <div className="min-h-screen bg-zinc-950">
       {/* Header */}
@@ -297,14 +327,14 @@ export default function FinancePage() {
                        hover:bg-zinc-800 transition-colors duration-200"
             >
               <Image 
-                src="/finance/united_states.png"
-                alt="US Flag"
+                src={selectedMarket === 'US' ? '/finance/united_states.png' : '/finance/mozambique.png'}
+                alt={selectedMarket === 'US' ? 'US Flag' : 'Mozambique Flag'}
                 width={24}
                 height={16}
                 className="w-6 h-4 object-cover rounded-sm"
               />
               <span className="text-zinc-100 font-medium">
-                US Markets
+                {selectedMarket === 'US' ? 'US Markets' : 'MZ Markets'}
               </span>
               <svg 
                 className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${marketDropdownOpen ? 'rotate-180' : ''}`}
@@ -327,6 +357,19 @@ export default function FinancePage() {
                   <Image src="/finance/united_states.png" alt="US Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
                   <span>US Markets</span>
                   {selectedMarket === 'US' && (
+                    <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setSelectedMarket('MZ'); setMarketDropdownOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800 transition-colors
+                            ${selectedMarket === 'MZ' ? 'text-cyan-400' : 'text-zinc-300'}`}
+                >
+                  <Image src="/finance/mozambique.png" alt="Mozambique Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
+                  <span>MZ Markets</span>
+                  {selectedMarket === 'MZ' && (
                     <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
@@ -532,16 +575,16 @@ export default function FinancePage() {
                 </div>
                 <span className="text-xs text-cyan-400">
                   {showArchive 
-                    ? (archivedArticles.length > 0 ? `${archivedArticles.length} archived` : 'No archived articles')
-                    : (articles.length > 0 ? `${articles.length} articles` : 'Loading...')
+                    ? (visibleArchivedArticles.length > 0 ? `${visibleArchivedArticles.length} archived` : 'No archived articles')
+                    : (visibleRecentArticles.length > 0 ? `${visibleRecentArticles.length} articles` : 'Loading...')
                   }
                 </span>
               </div>
               
               {/* Articles Grid with Images */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(showArchive ? archivedArticles : articles).length > 0 ? (
-                  (showArchive ? archivedArticles : articles).map((article) => (
+                {(showArchive ? visibleArchivedArticles : visibleRecentArticles).length > 0 ? (
+                  (showArchive ? visibleArchivedArticles : visibleRecentArticles).map((article) => (
                     <a
                       key={article.id}
                       href={article.link}
