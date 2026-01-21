@@ -159,7 +159,10 @@ function devLog(message: string, data?: unknown) {
  * 6. Insert into Supabase (with duplicate handling)
  * 7. Return detailed statistics
  */
-export async function runIngestion(feedsOverride?: FeedSource[]): Promise<IngestionStats> {
+export async function runIngestion(
+  feedsOverride?: FeedSource[],
+  options?: { maxItemsPerFeed?: number }
+): Promise<IngestionStats> {
   const startedAt = new Date().toISOString();
   const startTime = Date.now();
   
@@ -171,7 +174,14 @@ export async function runIngestion(feedsOverride?: FeedSource[]): Promise<Ingest
 
   // Fetch all feeds in parallel
   const fetchResults = await fetchAllFeeds(feeds);
-  const fetchStats = getFetchStats(fetchResults);
+  const maxItemsPerFeed = options?.maxItemsPerFeed;
+  const limitedResults = (maxItemsPerFeed && maxItemsPerFeed > 0)
+    ? fetchResults.map(result => ({
+        ...result,
+        items: result.items.slice(0, maxItemsPerFeed),
+      }))
+    : fetchResults;
+  const fetchStats = getFetchStats(limitedResults);
   
   devLog(`Fetch complete: ${fetchStats.successfulFeeds}/${fetchStats.totalFeeds} feeds, ${fetchStats.totalItems} items`);
 
@@ -180,7 +190,7 @@ export async function runIngestion(feedsOverride?: FeedSource[]): Promise<Ingest
   const allPartialArticles: PartialArticle[] = [];
   const allErrors: string[] = [...fetchStats.errors];
 
-  for (const result of fetchResults) {
+  for (const result of limitedResults) {
     const sourceResult: SourceIngestionResult = {
       source: result.source,
       fetchStatus: result.error ? 'failed' : 'success',

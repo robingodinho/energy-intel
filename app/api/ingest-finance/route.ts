@@ -12,6 +12,7 @@ export const maxDuration = 60;
  * Finance-only ingestion endpoint (inline, no background tasks)
  */
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
   // Validate cron secret
   const cronSecret = request.headers.get('x-cron-secret');
   const expectedSecret = process.env.CRON_SECRET;
@@ -29,11 +30,12 @@ export async function GET(request: NextRequest) {
     console.log('[/api/ingest-finance] Starting finance-only ingestion...');
 
     const financeFeeds = getEnabledFeedsByType('finance');
-    // Exclude Mozambique-specific feeds from the US finance ingest
+    // US-only finance ingest (Yahoo only)
     const usFinanceFeeds = financeFeeds.filter((feed) =>
-      !/mozambique|club of mozambique/i.test(feed.name)
+      /yahoo finance/i.test(feed.name)
     );
-    const stats: IngestionStats = await runIngestion(usFinanceFeeds);
+    const maxItemsPerFeed = Math.max(1, Math.min(50, parseInt(searchParams.get('maxItems') || '25', 10)));
+    const stats: IngestionStats = await runIngestion(usFinanceFeeds, { maxItemsPerFeed });
 
     console.log(
       `[/api/ingest-finance] Completed: ${stats.totalItemsInserted} inserted, ${stats.totalItemsDuplicates} duplicates, ${stats.totalDbErrors} errors`
