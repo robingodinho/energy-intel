@@ -76,11 +76,15 @@ const FALLBACK_MARKET_SUMMARIES: MarketSummary[] = [
   { id: 1, headline: 'Loading market data...', summary: 'AI-generated market summaries are being prepared.' },
 ];
 
-// Mozambique-focused sources to filter articles when MZ market is selected
+// Sources to include for each market filter
+const US_FINANCE_SOURCES = new Set<string>([
+  'Yahoo Finance',
+  'CNBC Energy',
+]);
+
 const MOZ_SOURCES = new Set<string>([
-  'Mozambique Energy (Google News)',
-  'Mozambique LNG Finance (Google News)',
   'Club of Mozambique',
+  'Club of Mozambique - Mining & Energy',
   'ESI Africa Mozambique',
   'Engineering News Energy',
 ]);
@@ -262,25 +266,29 @@ export default function FinancePage() {
     });
   };
 
-  // Market-specific article slices (filter Mozambique sources/titles when MZ is selected)
+  // Market-specific article slices
   const visibleRecentArticles = useMemo(() => {
-    if (selectedMarket !== 'MZ') return articles;
-    return articles.filter(
-      (a) =>
-        MOZ_SOURCES.has(a.source) ||
-        a.title?.toLowerCase().includes('mozambique') ||
-        a.summary?.toLowerCase().includes('mozambique')
-    );
+    if (selectedMarket === 'MZ') {
+      return articles.filter(
+        (a) =>
+          MOZ_SOURCES.has(a.source) ||
+          a.title?.toLowerCase().includes('mozambique') ||
+          a.summary?.toLowerCase().includes('mozambique')
+      );
+    }
+    return articles.filter((a) => US_FINANCE_SOURCES.has(a.source));
   }, [articles, selectedMarket]);
 
   const visibleArchivedArticles = useMemo(() => {
-    if (selectedMarket !== 'MZ') return archivedArticles;
-    return archivedArticles.filter(
-      (a) =>
-        MOZ_SOURCES.has(a.source) ||
-        a.title?.toLowerCase().includes('mozambique') ||
-        a.summary?.toLowerCase().includes('mozambique')
-    );
+    if (selectedMarket === 'MZ') {
+      return archivedArticles.filter(
+        (a) =>
+          MOZ_SOURCES.has(a.source) ||
+          a.title?.toLowerCase().includes('mozambique') ||
+          a.summary?.toLowerCase().includes('mozambique')
+      );
+    }
+    return archivedArticles.filter((a) => US_FINANCE_SOURCES.has(a.source));
   }, [archivedArticles, selectedMarket]);
 
   return (
