@@ -79,7 +79,15 @@ export async function insertArticles(
 }
 
 // Finance sources to exclude from main feed
-const FINANCE_SOURCES = ['Yahoo Finance', 'CNBC Energy'];
+const FINANCE_SOURCES = [
+  'Yahoo Finance',
+  'CNBC Energy',
+  'Club of Mozambique',
+  'ESI Africa Mozambique',
+  'Engineering News Energy',
+  'Mozambique Energy (Google News)',
+  'Mozambique LNG Finance (Google News)',
+];
 
 /**
  * Fetch articles from the database

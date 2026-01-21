@@ -18,7 +18,15 @@ export interface GetArticlesOptions {
 }
 
 // Finance sources that should be excluded from main feed
-const FINANCE_SOURCES = ['Yahoo Finance', 'CNBC Energy'];
+const FINANCE_SOURCES = [
+  'Yahoo Finance',
+  'CNBC Energy',
+  'Club of Mozambique',
+  'ESI Africa Mozambique',
+  'Engineering News Energy',
+  'Mozambique Energy (Google News)',
+  'Mozambique LNG Finance (Google News)',
+];
 
 /**
  * Get date range boundaries based on time range option
