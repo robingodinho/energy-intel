@@ -209,8 +209,9 @@ export default function FinancePage() {
         const [stocksRes, forexRes, articlesRes, archivedRes, historyRes, summariesRes] = await Promise.all([
           fetch('/api/finance/stocks').then(r => r.json()).catch(() => ({ stocks: FALLBACK_STOCKS })),
           fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
-          fetch('/api/finance/articles?limit=6', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
-          fetch('/api/finance/articles?archived=true&limit=9', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
+          // Fetch a larger window so market filters can slice reliably
+          fetch('/api/finance/articles?limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
+          fetch('/api/finance/articles?archived=true&limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
           fetch('/api/finance/market-summary').then(r => r.json()).catch(() => ({ summaries: [] })),
         ]);
@@ -269,26 +270,30 @@ export default function FinancePage() {
   // Market-specific article slices
   const visibleRecentArticles = useMemo(() => {
     if (selectedMarket === 'MZ') {
-      return articles.filter(
+      return articles
+        .filter(
         (a) =>
           MOZ_SOURCES.has(a.source) ||
           a.title?.toLowerCase().includes('mozambique') ||
           a.summary?.toLowerCase().includes('mozambique')
-      );
+        )
+        .slice(0, 6);
     }
-    return articles.filter((a) => US_FINANCE_SOURCES.has(a.source));
+    return articles.filter((a) => US_FINANCE_SOURCES.has(a.source)).slice(0, 6);
   }, [articles, selectedMarket]);
 
   const visibleArchivedArticles = useMemo(() => {
     if (selectedMarket === 'MZ') {
-      return archivedArticles.filter(
+      return archivedArticles
+        .filter(
         (a) =>
           MOZ_SOURCES.has(a.source) ||
           a.title?.toLowerCase().includes('mozambique') ||
           a.summary?.toLowerCase().includes('mozambique')
-      );
+        )
+        .slice(0, 9);
     }
-    return archivedArticles.filter((a) => US_FINANCE_SOURCES.has(a.source));
+    return archivedArticles.filter((a) => US_FINANCE_SOURCES.has(a.source)).slice(0, 9);
   }, [archivedArticles, selectedMarket]);
 
   return (
