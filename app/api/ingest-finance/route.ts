@@ -29,7 +29,11 @@ export async function GET(request: NextRequest) {
     console.log('[/api/ingest-finance] Starting finance-only ingestion...');
 
     const financeFeeds = getEnabledFeedsByType('finance');
-    const stats: IngestionStats = await runIngestion(financeFeeds);
+    // Exclude Mozambique-specific feeds from the US finance ingest
+    const usFinanceFeeds = financeFeeds.filter((feed) =>
+      !/mozambique|club of mozambique/i.test(feed.name)
+    );
+    const stats: IngestionStats = await runIngestion(usFinanceFeeds);
 
     console.log(
       `[/api/ingest-finance] Completed: ${stats.totalItemsInserted} inserted, ${stats.totalItemsDuplicates} duplicates, ${stats.totalDbErrors} errors`
