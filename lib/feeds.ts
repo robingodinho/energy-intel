@@ -179,14 +179,14 @@ const FINANCE_SOURCES: FeedSource[] = [
   {
     name: 'Mozambique Energy (Google News)',
     url: 'https://news.google.com/rss/search?q=Mozambique%20energy',
-    enabled: true,
+    enabled: false,
     articleType: 'finance',
     // Broad Mozambique energy coverage via Google News
   },
   {
     name: 'Mozambique LNG Finance (Google News)',
     url: 'https://news.google.com/rss/search?q=Mozambique%20gas%20LNG%20energy%20finance',
-    enabled: true,
+    enabled: false,
     articleType: 'finance',
     // More finance-focused Mozambique LNG/energy items via Google News
   },
@@ -200,7 +200,7 @@ const FINANCE_SOURCES: FeedSource[] = [
   {
     name: 'ESI Africa Mozambique',
     url: 'https://www.esi-africa.com/tag/mozambique/feed/',
-    enabled: false,
+    enabled: true,
     articleType: 'finance',
     // Enable after verifying availability; focused on power/energy sector
   },
