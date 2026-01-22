@@ -213,7 +213,7 @@ export default function FinancePage() {
           fetch('/api/finance/articles?limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/articles?archived=true&limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
-          fetch('/api/finance/market-summary').then(r => r.json()).catch(() => ({ summaries: [] })),
+          fetch(`/api/finance/market-summary?market=${selectedMarket}`).then(r => r.json()).catch(() => ({ summaries: [] })),
         ]);
 
         if (stocksRes.stocks?.length > 0) {
@@ -253,7 +253,7 @@ export default function FinancePage() {
     // Refresh every 5 minutes
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedMarket]);
 
   const toggleSummary = (id: number) => {
     setExpandedSummaries(prev => {

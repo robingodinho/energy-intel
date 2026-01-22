@@ -25,15 +25,19 @@ interface CachedSummaries {
  * Returns AI-generated market summaries based on recent finance articles.
  * Summaries are cached and regenerated every 6 hours with the CRON job.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const market = (searchParams.get('market') || 'US').toUpperCase();
+    const cacheKey = market === 'MZ' ? 'energy-finance-mz' : 'energy-finance-us';
+
     const supabase = getSupabase();
 
     // Check for cached summaries first
     const { data: cached, error: cacheError } = await supabase
       .from('market_summaries')
       .select('*')
-      .eq('id', 'energy-finance')
+      .eq('id', cacheKey)
       .single();
 
     if (!cacheError && cached) {
@@ -52,7 +56,7 @@ export async function GET() {
     }
 
     // Generate new summaries
-    const summaries = await generateMarketSummaries(supabase);
+    const summaries = await generateMarketSummaries(supabase, market);
 
     if (summaries.length > 0) {
       // Cache the new summaries
@@ -60,7 +64,7 @@ export async function GET() {
       await supabase
         .from('market_summaries')
         .upsert({
-          id: 'energy-finance',
+          id: cacheKey,
           summaries: summaries,
           generated_at: now,
         }, { onConflict: 'id' });
@@ -93,18 +97,29 @@ export async function GET() {
 /**
  * Generate market summaries from recent finance articles using AI
  */
-async function generateMarketSummaries(supabase: ReturnType<typeof getSupabase>): Promise<MarketSummary[]> {
+async function generateMarketSummaries(
+  supabase: ReturnType<typeof getSupabase>,
+  market: string
+): Promise<MarketSummary[]> {
   // Fetch recent finance articles (last 48 hours)
   const cutoffDate = new Date();
   cutoffDate.setHours(cutoffDate.getHours() - 48);
 
-  const { data: articles, error } = await supabase
+  let query = supabase
     .from('articles')
     .select('title, summary, source, pub_date')
     .eq('article_type', 'finance')
     .gte('pub_date', cutoffDate.toISOString())
     .order('pub_date', { ascending: false })
-    .limit(20);
+    .limit(40);
+
+  if (market === 'MZ') {
+    query = query.or('source.ilike.%mozambique%,title.ilike.%mozambique%,summary.ilike.%mozambique%');
+  } else {
+    query = query.in('source', ['Yahoo Finance', 'CNBC Energy']);
+  }
+
+  const { data: articles, error } = await query;
 
   if (error || !articles || articles.length === 0) {
     console.error('[market-summary] No recent articles found:', error);
