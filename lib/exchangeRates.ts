@@ -32,6 +32,8 @@ export const TARGET_CURRENCIES = [
   'INR', // Indian Rupee
   'CHF', // Swiss Franc
   'AUD', // Australian Dollar
+  'MZN', // Mozambican Metical
+  'ZAR', // South African Rand
 ];
 
 /**
@@ -117,6 +119,8 @@ function getPlaceholderRates(): ExchangeRate[] {
     { targetCurrency: 'INR', rate: 85.72, changePercent: 0.18 },
     { targetCurrency: 'CHF', rate: 0.90, changePercent: -0.05 },
     { targetCurrency: 'AUD', rate: 1.61, changePercent: 0.31 },
+    { targetCurrency: 'MZN', rate: 64.0, changePercent: 0.05 },
+    { targetCurrency: 'ZAR', rate: 18.5, changePercent: 0.08 },
   ];
 }
 

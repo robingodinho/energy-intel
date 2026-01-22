@@ -69,6 +69,8 @@ const FALLBACK_FOREX: ForexRate[] = [
   { pair: 'INR', rate: 85.72, change: 0.18 },
   { pair: 'CHF', rate: 0.90, change: -0.05 },
   { pair: 'AUD', rate: 1.61, change: 0.31 },
+  { pair: 'MZN', rate: 64.0, change: 0.05 },
+  { pair: 'ZAR', rate: 18.5, change: 0.08 },
 ];
 
 // Fallback market summaries while loading
@@ -198,6 +200,43 @@ export default function FinancePage() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [usdAmountStr, setUsdAmountStr] = useState<string>('1');
   const usdAmount = parseFloat(usdAmountStr) || 0;
+
+  // Market-specific FX view (MZ uses MZN as base currency)
+  const forexDisplay = useMemo(() => {
+    if (selectedMarket === 'MZ') {
+      const usdToMzn = forexRates.find(r => r.pair === 'MZN');
+      const usdToMznRate = usdToMzn?.rate || 0;
+      const usdToMznChange = usdToMzn?.change || 0;
+
+      if (!usdToMznRate) {
+        return {
+          base: 'MZN',
+          rates: [{ pair: 'USD', rate: 0, change: 0 }],
+        };
+      }
+
+      const mznUsdRate = 1 / usdToMznRate;
+      const mznUsdChange = -usdToMznChange;
+
+      const derivedRates = forexRates
+        .filter(r => r.pair !== 'MZN' && r.pair !== 'CNY')
+        .map(r => ({
+          pair: r.pair,
+          rate: r.rate / usdToMznRate,
+          change: r.change,
+        }));
+
+      return {
+        base: 'MZN',
+        rates: [{ pair: 'USD', rate: mznUsdRate, change: mznUsdChange }, ...derivedRates],
+      };
+    }
+
+    return {
+      base: 'USD',
+      rates: forexRates.filter(r => r.pair !== 'MZN'),
+    };
+  }, [forexRates, selectedMarket]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -450,7 +489,7 @@ export default function FinancePage() {
             {/* Mobile Forex Rates - Shows between stocks and market summary on mobile */}
             <section className="mb-6 lg:hidden">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">USD Exchange</h3>
+                <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">{forexDisplay.base} Exchange</h3>
                 <span className="text-xs text-cyan-400">Live</span>
               </div>
               
@@ -475,12 +514,12 @@ export default function FinancePage() {
                              transition-all duration-200"
                     placeholder="1.00"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">USD</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">{forexDisplay.base}</span>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {forexRates.map((forex) => {
+                {forexDisplay.rates.map((forex) => {
                   const convertedValue = usdAmount * (forex.rate || 0);
                   return (
                     <div 
@@ -489,7 +528,7 @@ export default function FinancePage() {
                                hover:bg-zinc-800/50 hover:border-zinc-600/50 transition-colors duration-200"
                     >
                       <div className="text-center">
-                        <span className="text-zinc-400 text-xs">{forex.pair}</span>
+                        <span className="text-zinc-400 text-xs">{forexDisplay.base}/{forex.pair}</span>
                         <div className="text-zinc-100 font-medium text-base mt-1">
                           {convertedValue.toFixed(convertedValue >= 100 ? 2 : 4)}
                         </div>
@@ -698,7 +737,7 @@ export default function FinancePage() {
               <div className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-zinc-700/40">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-zinc-100">USD Exchange</h3>
+                    <h3 className="text-sm font-medium text-zinc-100">{forexDisplay.base} Exchange</h3>
                     <span className="text-xs text-cyan-400">Live</span>
                   </div>
                 </div>
@@ -724,12 +763,12 @@ export default function FinancePage() {
                                transition-all duration-200"
                       placeholder="1.00"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs">USD</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs">{forexDisplay.base}</span>
                   </div>
                 </div>
                 
                 <div className="divide-y divide-zinc-700/40">
-                  {forexRates.map((forex) => {
+                  {forexDisplay.rates.map((forex) => {
                     const convertedValue = usdAmount * (forex.rate || 0);
                     return (
                       <div 
@@ -737,7 +776,7 @@ export default function FinancePage() {
                         className="px-4 py-3 hover:bg-zinc-800/30 transition-colors duration-200"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-zinc-400 text-sm">USD/{forex.pair}</span>
+                          <span className="text-zinc-400 text-sm">{forexDisplay.base}/{forex.pair}</span>
                           <div className="text-right">
                             <div className="text-zinc-100 font-medium text-sm">
                               {convertedValue.toFixed(convertedValue >= 100 ? 2 : 4)}
