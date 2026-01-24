@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
     console.log('[/api/ingest-qatar] Starting Qatar-only ingestion...');
 
     const financeFeeds = getEnabledFeedsByType('finance');
-    // Only ingest from Qatar energy Google News feeds
+    // Only ingest from Qatar News Agency RSS feeds
     const qatarFeeds = financeFeeds.filter((feed) =>
-      /^Qatar Energy( Finance)?|^Gulf Times Qatar Energy/i.test(feed.name)
+      /^QNA (Economy Local|Economy International) \(RSS\)$/i.test(feed.name)
     );
 
     const stats: IngestionStats = await runIngestion(qatarFeeds, {

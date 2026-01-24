@@ -236,23 +236,37 @@ const FINANCE_SOURCES: FeedSource[] = [
   {
     name: 'Qatar Energy (Google News)',
     url: 'https://news.google.com/rss/search?q=Qatar+energy+LNG+natural+gas',
-    enabled: true,
+    enabled: false,
     articleType: 'finance',
     // Broad Qatar energy coverage via Google News - focuses on LNG and natural gas
   },
   {
     name: 'Qatar Energy Finance (Google News)',
     url: 'https://news.google.com/rss/search?q=Qatar+energy+finance+investment+LNG',
-    enabled: true,
+    enabled: false,
     articleType: 'finance',
     // Finance-focused Qatar energy coverage via Google News
   },
   {
     name: 'Gulf Times Qatar Energy (Google News)',
     url: 'https://news.google.com/rss/search?q=site:gulf-times.com+Qatar+energy+LNG',
-    enabled: true,
+    enabled: false,
     articleType: 'finance',
     // Qatar-specific energy news from Gulf Times via Google News
+  },
+  {
+    name: 'QNA Economy Local (RSS)',
+    url: 'https://qna.org.qa/en/Pages/RSS-Feeds/Economy-Local',
+    enabled: true,
+    articleType: 'finance',
+    // Qatar News Agency - Economy Local
+  },
+  {
+    name: 'QNA Economy International (RSS)',
+    url: 'https://qna.org.qa/en/Pages/RSS-Feeds/Economy-International',
+    enabled: true,
+    articleType: 'finance',
+    // Qatar News Agency - Economy International
   },
 ];
 

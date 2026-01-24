@@ -93,9 +93,8 @@ const MOZ_SOURCES = new Set<string>([
 ]);
 
 const QA_SOURCES = new Set<string>([
-  'Qatar Energy (Google News)',
-  'Qatar Energy Finance (Google News)',
-  'Gulf Times Qatar Energy (Google News)',
+  'QNA Economy Local (RSS)',
+  'QNA Economy International (RSS)',
 ]);
 
 type Market = 'US' | 'MZ' | 'QA';

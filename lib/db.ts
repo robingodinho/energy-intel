@@ -90,6 +90,8 @@ const FINANCE_SOURCES = [
   'Qatar Energy (Google News)',
   'Qatar Energy Finance (Google News)',
   'Gulf Times Qatar Energy (Google News)',
+  'QNA Economy Local (RSS)',
+  'QNA Economy International (RSS)',
   'Engineering News Energy',
   'Mozambique Energy (Google News)',
   'Mozambique LNG Finance (Google News)',
