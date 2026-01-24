@@ -87,6 +87,9 @@ const FINANCE_SOURCES = [
   'Club of Mozambique - Mining & Energy',
   'Club of Mozambique - Business',
   'ESI Africa Mozambique',
+  'Qatar Energy (Google News)',
+  'Qatar Energy Finance (Google News)',
+  'Gulf Times Qatar Energy (Google News)',
   'Engineering News Energy',
   'Mozambique Energy (Google News)',
   'Mozambique LNG Finance (Google News)',
@@ -132,12 +135,14 @@ export async function fetchArticles(options?: {
     return { data: [], error: error.message };
   }
 
-  // Filter out any Mozambique-related sources (catches variations and old entries)
+  // Filter out any Mozambique and Qatar-related sources (catches variations and old entries)
   // This is done in JavaScript to ensure we catch all variations
   let filteredData = (data as ArticleRow[]) || [];
   if (!options?.includeFinance) {
     filteredData = filteredData.filter(
-      (article) => !article.source.toLowerCase().includes('mozambique')
+      (article) => 
+        !article.source.toLowerCase().includes('mozambique') &&
+        !article.source.toLowerCase().includes('qatar')
     );
   }
 

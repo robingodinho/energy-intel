@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const market = (searchParams.get('market') || 'US').toUpperCase();
-    const cacheKey = market === 'MZ' ? 'energy-finance-mz' : 'energy-finance-us';
+    const cacheKey = market === 'MZ' ? 'energy-finance-mz' : market === 'QA' ? 'energy-finance-qa' : 'energy-finance-us';
 
     const supabase = getSupabase();
 
@@ -115,6 +115,8 @@ async function generateMarketSummaries(
 
   if (market === 'MZ') {
     query = query.or('source.ilike.%mozambique%,title.ilike.%mozambique%,summary.ilike.%mozambique%');
+  } else if (market === 'QA') {
+    query = query.or('source.ilike.%qatar%,title.ilike.%qatar%,summary.ilike.%qatar%');
   } else {
     query = query.in('source', ['Yahoo Finance', 'CNBC Energy']);
   }

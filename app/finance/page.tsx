@@ -69,6 +69,7 @@ const FALLBACK_FOREX: ForexRate[] = [
   { pair: 'INR', rate: 85.72, change: 0.18 },
   { pair: 'CHF', rate: 0.90, change: -0.05 },
   { pair: 'AUD', rate: 1.61, change: 0.31 },
+  { pair: 'QAR', rate: 3.64, change: 0.02 },
   { pair: 'MZN', rate: 64.0, change: 0.05 },
   { pair: 'ZAR', rate: 18.5, change: 0.08 },
 ];
@@ -91,7 +92,13 @@ const MOZ_SOURCES = new Set<string>([
   'Club of Mozambique - Business',
 ]);
 
-type Market = 'US' | 'MZ';
+const QA_SOURCES = new Set<string>([
+  'Qatar Energy (Google News)',
+  'Qatar Energy Finance (Google News)',
+  'Gulf Times Qatar Energy (Google News)',
+]);
+
+type Market = 'US' | 'MZ' | 'QA';
 
 // Price point interface for historical data
 interface PricePoint {
@@ -201,7 +208,7 @@ export default function FinancePage() {
   const [usdAmountStr, setUsdAmountStr] = useState<string>('1');
   const usdAmount = parseFloat(usdAmountStr) || 0;
 
-  // Market-specific FX view (MZ uses MZN as base currency)
+  // Market-specific FX view (MZ uses MZN, QA uses QAR as base currency)
   const forexDisplay = useMemo(() => {
     if (selectedMarket === 'MZ') {
       const usdToMzn = forexRates.find(r => r.pair === 'MZN');
@@ -231,10 +238,38 @@ export default function FinancePage() {
         rates: [{ pair: 'USD', rate: mznUsdRate, change: mznUsdChange }, ...derivedRates],
       };
     }
+    if (selectedMarket === 'QA') {
+      const usdToQar = forexRates.find(r => r.pair === 'QAR');
+      const usdToQarRate = usdToQar?.rate || 0;
+      const usdToQarChange = usdToQar?.change || 0;
+
+      if (!usdToQarRate) {
+        return {
+          base: 'QAR',
+          rates: [{ pair: 'USD', rate: 0, change: 0 }],
+        };
+      }
+
+      const qarUsdRate = 1 / usdToQarRate;
+      const qarUsdChange = -usdToQarChange;
+
+      const derivedRates = forexRates
+        .filter(r => r.pair !== 'QAR' && r.pair !== 'CNY')
+        .map(r => ({
+          pair: r.pair,
+          rate: r.rate / usdToQarRate,
+          change: r.change,
+        }));
+
+      return {
+        base: 'QAR',
+        rates: [{ pair: 'USD', rate: qarUsdRate, change: qarUsdChange }, ...derivedRates],
+      };
+    }
 
     return {
       base: 'USD',
-      rates: forexRates.filter(r => r.pair !== 'MZN'),
+      rates: forexRates.filter(r => r.pair !== 'MZN' && r.pair !== 'QAR'),
     };
   }, [forexRates, selectedMarket]);
 
@@ -250,7 +285,7 @@ export default function FinancePage() {
           fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
           // Fetch a larger window so market filters can slice reliably
           fetch('/api/finance/articles?limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
-          // Fetch more archived articles to ensure we get enough Mozambique articles (need up to 9 for MZ Markets)
+          // Fetch more archived articles to ensure we get enough Mozambique/Qatar articles
           fetch('/api/finance/articles?archived=true&limit=500', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
           fetch(`/api/finance/market-summary?market=${selectedMarket}`).then(r => r.json()).catch(() => ({ summaries: [] })),
@@ -315,6 +350,12 @@ export default function FinancePage() {
         .filter((a) => MOZ_SOURCES.has(a.source))
         .slice(0, 6);
     }
+    if (selectedMarket === 'QA') {
+      // Only show articles from Qatar energy sources
+      return articles
+        .filter((a) => QA_SOURCES.has(a.source))
+        .slice(0, 6);
+    }
     return articles.filter((a) => US_FINANCE_SOURCES.has(a.source)).slice(0, 6);
   }, [articles, selectedMarket]);
 
@@ -323,6 +364,12 @@ export default function FinancePage() {
       // Only show articles from the three Club of Mozambique category feeds
       return archivedArticles
         .filter((a) => MOZ_SOURCES.has(a.source))
+        .slice(0, 9);
+    }
+    if (selectedMarket === 'QA') {
+      // Only show articles from Qatar energy sources
+      return archivedArticles
+        .filter((a) => QA_SOURCES.has(a.source))
         .slice(0, 9);
     }
     return archivedArticles.filter((a) => US_FINANCE_SOURCES.has(a.source)).slice(0, 9);
@@ -372,14 +419,22 @@ export default function FinancePage() {
                        hover:bg-zinc-800 transition-colors duration-200"
             >
               <Image 
-                src={selectedMarket === 'US' ? '/finance/united_states.png' : '/finance/mozambique.png'}
-                alt={selectedMarket === 'US' ? 'US Flag' : 'Mozambique Flag'}
+                src={
+                  selectedMarket === 'US' ? '/finance/united_states.png' : 
+                  selectedMarket === 'MZ' ? '/finance/mozambique.png' : 
+                  '/finance/qatar.png'
+                }
+                alt={
+                  selectedMarket === 'US' ? 'US Flag' : 
+                  selectedMarket === 'MZ' ? 'Mozambique Flag' : 
+                  'Qatar Flag'
+                }
                 width={24}
                 height={16}
                 className="w-6 h-4 object-cover rounded-sm"
               />
               <span className="text-zinc-100 font-medium">
-                {selectedMarket === 'US' ? 'US Markets' : 'MZ Markets'}
+                {selectedMarket === 'US' ? 'US Markets' : selectedMarket === 'MZ' ? 'MZ Markets' : 'QA Markets'}
               </span>
               <svg 
                 className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${marketDropdownOpen ? 'rotate-180' : ''}`}
@@ -415,6 +470,19 @@ export default function FinancePage() {
                   <Image src="/finance/mozambique.png" alt="Mozambique Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
                   <span>MZ Markets</span>
                   {selectedMarket === 'MZ' && (
+                    <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setSelectedMarket('QA'); setMarketDropdownOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800 transition-colors
+                            ${selectedMarket === 'QA' ? 'text-cyan-400' : 'text-zinc-300'}`}
+                >
+                  <Image src="/finance/qatar.png" alt="Qatar Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
+                  <span>QA Markets</span>
+                  {selectedMarket === 'QA' && (
                     <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>

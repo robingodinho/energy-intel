@@ -233,6 +233,27 @@ const FINANCE_SOURCES: FeedSource[] = [
     articleType: 'finance',
     // Not Mozambique-only; can be title-filtered later for Mozambique if needed
   },
+  {
+    name: 'Qatar Energy (Google News)',
+    url: 'https://news.google.com/rss/search?q=Qatar+energy+LNG+natural+gas',
+    enabled: true,
+    articleType: 'finance',
+    // Broad Qatar energy coverage via Google News - focuses on LNG and natural gas
+  },
+  {
+    name: 'Qatar Energy Finance (Google News)',
+    url: 'https://news.google.com/rss/search?q=Qatar+energy+finance+investment+LNG',
+    enabled: true,
+    articleType: 'finance',
+    // Finance-focused Qatar energy coverage via Google News
+  },
+  {
+    name: 'Gulf Times Qatar Energy (Google News)',
+    url: 'https://news.google.com/rss/search?q=site:gulf-times.com+Qatar+energy+LNG',
+    enabled: true,
+    articleType: 'finance',
+    // Qatar-specific energy news from Gulf Times via Google News
+  },
 ];
 
 // =============================================================================
