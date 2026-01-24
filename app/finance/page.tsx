@@ -93,8 +93,10 @@ const MOZ_SOURCES = new Set<string>([
 ]);
 
 const QA_SOURCES = new Set<string>([
-  'QNA Economy Local (RSS)',
-  'QNA Economy International (RSS)',
+  'Gulf Times Qatar',
+  'Gulf Times Business',
+  'QNA Economy Local (RSS)', // Legacy - no longer used
+  'QNA Economy International (RSS)', // Legacy - no longer used
 ]);
 
 type Market = 'US' | 'MZ' | 'QA';

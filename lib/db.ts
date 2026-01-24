@@ -90,6 +90,8 @@ const FINANCE_SOURCES = [
   'Qatar Energy (Google News)',
   'Qatar Energy Finance (Google News)',
   'Gulf Times Qatar Energy (Google News)',
+  'Gulf Times Qatar',
+  'Gulf Times Business',
   'QNA Economy Local (RSS)',
   'QNA Economy International (RSS)',
   'Engineering News Energy',
@@ -144,7 +146,8 @@ export async function fetchArticles(options?: {
     filteredData = filteredData.filter(
       (article) => 
         !article.source.toLowerCase().includes('mozambique') &&
-        !article.source.toLowerCase().includes('qatar')
+        !article.source.toLowerCase().includes('qatar') &&
+        !article.source.toLowerCase().includes('gulf times')
     );
   }
 
