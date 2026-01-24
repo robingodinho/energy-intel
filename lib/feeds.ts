@@ -213,11 +213,11 @@ const FINANCE_SOURCES: FeedSource[] = [
     // Mozambique mining & energy category feed
   },
   {
-    name: 'Club of Mozambique - Tourism',
-    url: 'https://clubofmozambique.com/news/category/tourism/feed/',
+    name: 'Club of Mozambique - Business',
+    url: 'https://clubofmozambique.com/news/category/business/feed/',
     enabled: true,
     articleType: 'finance',
-    // Mozambique tourism category feed
+    // Mozambique business category feed
   },
   {
     name: 'ESI Africa Mozambique',
