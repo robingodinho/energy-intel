@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { runIngestion, IngestionStats } from '@/lib/ingest';
 import { getEnabledFeedsByType } from '@/lib/feeds';
+import { archiveOldFinanceArticles } from '@/lib/db';
 
 // Force dynamic rendering - no caching for ingestion endpoint
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,16 @@ export async function GET(request: NextRequest) {
       `[/api/ingest-finance] Completed: ${stats.totalItemsInserted} inserted, ${stats.totalItemsDuplicates} duplicates, ${stats.totalDbErrors} errors`
     );
 
+    // Archive older articles (keep only 6 most recent as active)
+    const usSources = ['Yahoo Finance', 'CNBC Energy'];
+    const archiveResult = await archiveOldFinanceArticles(usSources, 6);
+    if (archiveResult.archived > 0) {
+      console.log(`[/api/ingest-finance] Archived ${archiveResult.archived} older articles`);
+    }
+    if (archiveResult.error) {
+      console.warn('[/api/ingest-finance] Archive warning:', archiveResult.error);
+    }
+
     // Revalidate pages so latest finance articles appear quickly
     try {
       revalidatePath('/finance');
@@ -68,6 +79,7 @@ export async function GET(request: NextRequest) {
           duplicates: stats.totalItemsDuplicates,
           skipped: stats.totalItemsSkipped,
           dbErrors: stats.totalDbErrors,
+          archived: archiveResult.archived,
         },
         perSource: stats.perSource.map(s => ({
           source: s.source,

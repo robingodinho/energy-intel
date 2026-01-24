@@ -435,7 +435,7 @@ export default function FinancePage() {
                 className="w-6 h-4 object-cover rounded-sm"
               />
               <span className="text-zinc-100 font-medium">
-                {selectedMarket === 'US' ? 'US Markets' : selectedMarket === 'MZ' ? 'MZ Markets' : 'QA Markets'}
+                {selectedMarket === 'US' ? 'United States' : selectedMarket === 'MZ' ? 'Mozambique' : 'Qatar'}
               </span>
               <svg 
                 className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${marketDropdownOpen ? 'rotate-180' : ''}`}
@@ -456,7 +456,7 @@ export default function FinancePage() {
                             ${selectedMarket === 'US' ? 'text-cyan-400' : 'text-zinc-300'}`}
                 >
                   <Image src="/finance/united_states.png" alt="US Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
-                  <span>US Markets</span>
+                  <span>United States</span>
                   {selectedMarket === 'US' && (
                     <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -469,7 +469,7 @@ export default function FinancePage() {
                             ${selectedMarket === 'MZ' ? 'text-cyan-400' : 'text-zinc-300'}`}
                 >
                   <Image src="/finance/mozambique.png" alt="Mozambique Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
-                  <span>MZ Markets</span>
+                  <span>Mozambique</span>
                   {selectedMarket === 'MZ' && (
                     <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -482,7 +482,7 @@ export default function FinancePage() {
                             ${selectedMarket === 'QA' ? 'text-cyan-400' : 'text-zinc-300'}`}
                 >
                   <Image src="/finance/qatar.png" alt="Qatar Flag" width={24} height={16} className="w-6 h-4 object-cover rounded-sm" />
-                  <span>QA Markets</span>
+                  <span>Qatar</span>
                   {selectedMarket === 'QA' && (
                     <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />

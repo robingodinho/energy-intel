@@ -243,3 +243,70 @@ export async function getExistingArticleTitles(titles: string[]): Promise<Set<st
   // Return normalized titles for comparison
   return new Set(data?.map(row => row.title.toLowerCase().trim()) || []);
 }
+
+/**
+ * Archive old finance articles for specific sources
+ * 
+ * Keeps the most recent N articles (default: 6) as active,
+ * and marks older articles as archived.
+ * 
+ * @param sources - Array of source names to process
+ * @param keepRecent - Number of most recent articles to keep as non-archived (default: 6)
+ * @returns Object with archived count and any errors
+ */
+export async function archiveOldFinanceArticles(
+  sources: string[],
+  keepRecent: number = 6
+): Promise<{ archived: number; error: string | null }> {
+  if (sources.length === 0) {
+    return { archived: 0, error: null };
+  }
+
+  const supabase = getSupabase();
+
+  try {
+    // Get all non-archived articles for these sources, ordered by pub_date DESC
+    const { data: articles, error: fetchError } = await supabase
+      .from('articles')
+      .select('id, pub_date, source')
+      .in('source', sources)
+      .eq('is_archived', false)
+      .order('pub_date', { ascending: false });
+
+    if (fetchError) {
+      console.error('[archiveOldFinanceArticles] Fetch error:', fetchError);
+      return { archived: 0, error: fetchError.message };
+    }
+
+    if (!articles || articles.length <= keepRecent) {
+      // Not enough articles to archive
+      return { archived: 0, error: null };
+    }
+
+    // Articles beyond the keepRecent count should be archived
+    const articlesToArchive = articles.slice(keepRecent);
+    const idsToArchive = articlesToArchive.map(a => a.id);
+
+    if (idsToArchive.length === 0) {
+      return { archived: 0, error: null };
+    }
+
+    // Update these articles to be archived
+    const { error: updateError } = await supabase
+      .from('articles')
+      .update({ is_archived: true })
+      .in('id', idsToArchive);
+
+    if (updateError) {
+      console.error('[archiveOldFinanceArticles] Update error:', updateError);
+      return { archived: 0, error: updateError.message };
+    }
+
+    console.log(`[archiveOldFinanceArticles] Archived ${idsToArchive.length} articles for sources: ${sources.join(', ')}`);
+    return { archived: idsToArchive.length, error: null };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[archiveOldFinanceArticles] Error:', errorMsg);
+    return { archived: 0, error: errorMsg };
+  }
+}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { runIngestion, IngestionStats } from '@/lib/ingest';
 import { getEnabledFeedsByType } from '@/lib/feeds';
+import { archiveOldFinanceArticles } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,6 +41,21 @@ export async function GET(request: NextRequest) {
       `[/api/ingest-mozambique] Completed: ${stats.totalItemsInserted} inserted, ${stats.totalItemsDuplicates} duplicates, ${stats.totalDbErrors} errors`
     );
 
+    // Archive older articles (keep only 6 most recent as active)
+    const mozSources = [
+      'Club of Mozambique',
+      'Club of Mozambique - Economy',
+      'Club of Mozambique - Mining & Energy',
+      'Club of Mozambique - Business',
+    ];
+    const archiveResult = await archiveOldFinanceArticles(mozSources, 6);
+    if (archiveResult.archived > 0) {
+      console.log(`[/api/ingest-mozambique] Archived ${archiveResult.archived} older articles`);
+    }
+    if (archiveResult.error) {
+      console.warn('[/api/ingest-mozambique] Archive warning:', archiveResult.error);
+    }
+
     try {
       revalidatePath('/finance');
       revalidatePath('/');
@@ -67,6 +83,7 @@ export async function GET(request: NextRequest) {
             duplicates: stats.totalItemsDuplicates,
             skipped: stats.totalItemsSkipped,
             dbErrors: stats.totalDbErrors,
+            archived: archiveResult.archived,
           },
           perSource: stats.perSource.map((s) => ({
             source: s.source,
