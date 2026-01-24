@@ -213,11 +213,11 @@ const FINANCE_SOURCES: FeedSource[] = [
     // Mozambique mining & energy category feed
   },
   {
-    name: 'Club of Mozambique - Business',
-    url: 'https://clubofmozambique.com/news/category/business/feed/',
+    name: 'Club of Mozambique - Tourism',
+    url: 'https://clubofmozambique.com/news/category/tourism/feed/',
     enabled: true,
     articleType: 'finance',
-    // Mozambique business category feed
+    // Mozambique tourism category feed
   },
   {
     name: 'ESI Africa Mozambique',
@@ -257,16 +257,30 @@ const FINANCE_SOURCES: FeedSource[] = [
   {
     name: 'QNA Economy Local (RSS)',
     url: 'https://qna.org.qa/en/Pages/RSS-Feeds/Economy-Local',
-    enabled: true,
+    enabled: false,
     articleType: 'finance',
-    // Qatar News Agency - Economy Local
+    // ❌ Feed not recognized as RSS 1 or 2 by parser
   },
   {
     name: 'QNA Economy International (RSS)',
     url: 'https://qna.org.qa/en/Pages/RSS-Feeds/Economy-International',
+    enabled: false,
+    articleType: 'finance',
+    // ❌ Feed not recognized as RSS 1 or 2 by parser
+  },
+  {
+    name: 'Gulf Times Qatar',
+    url: 'https://www.gulf-times.com/rssFeed/8',
     enabled: true,
     articleType: 'finance',
-    // Qatar News Agency - Economy International
+    // ✅ Verified working - Qatar local news (50 items)
+  },
+  {
+    name: 'Gulf Times Business',
+    url: 'https://www.gulf-times.com/rssFeed/2',
+    enabled: true,
+    articleType: 'finance',
+    // ✅ Verified working - Business/finance news covering Qatar (50 items)
   },
 ];
 
