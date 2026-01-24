@@ -12,6 +12,9 @@ export const maxDuration = 60;
  * Filters enabled finance feeds to Qatar-specific sources.
  */
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const maxItemsParam = searchParams.get('maxItems');
+  const maxItemsPerFeed = maxItemsParam ? Number.parseInt(maxItemsParam, 10) : undefined;
   const cronSecret = request.headers.get('x-cron-secret');
   const expectedSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get('authorization');
@@ -33,7 +36,9 @@ export async function GET(request: NextRequest) {
       /^Qatar Energy( Finance)?|^Gulf Times Qatar Energy/i.test(feed.name)
     );
 
-    const stats: IngestionStats = await runIngestion(qatarFeeds);
+    const stats: IngestionStats = await runIngestion(qatarFeeds, {
+      maxItemsPerFeed: Number.isFinite(maxItemsPerFeed) ? maxItemsPerFeed : undefined,
+    });
 
     console.log(
       `[/api/ingest-qatar] Completed: ${stats.totalItemsInserted} inserted, ${stats.totalItemsDuplicates} duplicates, ${stats.totalDbErrors} errors`
