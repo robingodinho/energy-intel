@@ -85,10 +85,10 @@ const US_FINANCE_SOURCES = new Set<string>([
 ]);
 
 const MOZ_SOURCES = new Set<string>([
-  'Club of Mozambique',
+  'Club of Mozambique', // Generic name for old articles (no longer ingested, but kept for historical data)
+  'Club of Mozambique - Economy',
   'Club of Mozambique - Mining & Energy',
-  'ESI Africa Mozambique',
-  'Engineering News Energy',
+  'Club of Mozambique - Business',
 ]);
 
 type Market = 'US' | 'MZ';
@@ -250,7 +250,8 @@ export default function FinancePage() {
           fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
           // Fetch a larger window so market filters can slice reliably
           fetch('/api/finance/articles?limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
-          fetch('/api/finance/articles?archived=true&limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
+          // Fetch more archived articles to ensure we get enough Mozambique articles (need up to 9 for MZ Markets)
+          fetch('/api/finance/articles?archived=true&limit=500', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
           fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
           fetch(`/api/finance/market-summary?market=${selectedMarket}`).then(r => r.json()).catch(() => ({ summaries: [] })),
         ]);
@@ -309,13 +310,9 @@ export default function FinancePage() {
   // Market-specific article slices
   const visibleRecentArticles = useMemo(() => {
     if (selectedMarket === 'MZ') {
+      // Only show articles from the three Club of Mozambique category feeds
       return articles
-        .filter(
-        (a) =>
-          MOZ_SOURCES.has(a.source) ||
-          a.title?.toLowerCase().includes('mozambique') ||
-          a.summary?.toLowerCase().includes('mozambique')
-        )
+        .filter((a) => MOZ_SOURCES.has(a.source))
         .slice(0, 6);
     }
     return articles.filter((a) => US_FINANCE_SOURCES.has(a.source)).slice(0, 6);
@@ -323,13 +320,9 @@ export default function FinancePage() {
 
   const visibleArchivedArticles = useMemo(() => {
     if (selectedMarket === 'MZ') {
+      // Only show articles from the three Club of Mozambique category feeds
       return archivedArticles
-        .filter(
-        (a) =>
-          MOZ_SOURCES.has(a.source) ||
-          a.title?.toLowerCase().includes('mozambique') ||
-          a.summary?.toLowerCase().includes('mozambique')
-        )
+        .filter((a) => MOZ_SOURCES.has(a.source))
         .slice(0, 9);
     }
     return archivedArticles.filter((a) => US_FINANCE_SOURCES.has(a.source)).slice(0, 9);

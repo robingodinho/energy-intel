@@ -82,7 +82,10 @@ export async function insertArticles(
 const FINANCE_SOURCES = [
   'Yahoo Finance',
   'CNBC Energy',
-  'Club of Mozambique',
+  'Club of Mozambique', // Generic name (may exist in database from old feeds)
+  'Club of Mozambique - Economy',
+  'Club of Mozambique - Mining & Energy',
+  'Club of Mozambique - Business',
   'ESI Africa Mozambique',
   'Engineering News Energy',
   'Mozambique Energy (Google News)',
@@ -117,6 +120,7 @@ export async function fetchArticles(options?: {
 
   // Exclude finance sources from main feed by default
   if (!options?.includeFinance) {
+    // Filter out finance sources (exact matches)
     for (const source of FINANCE_SOURCES) {
       query = query.neq('source', source);
     }
@@ -128,7 +132,16 @@ export async function fetchArticles(options?: {
     return { data: [], error: error.message };
   }
 
-  return { data: data as ArticleRow[], error: null };
+  // Filter out any Mozambique-related sources (catches variations and old entries)
+  // This is done in JavaScript to ensure we catch all variations
+  let filteredData = (data as ArticleRow[]) || [];
+  if (!options?.includeFinance) {
+    filteredData = filteredData.filter(
+      (article) => !article.source.toLowerCase().includes('mozambique')
+    );
+  }
+
+  return { data: filteredData, error: null };
 }
 
 /**

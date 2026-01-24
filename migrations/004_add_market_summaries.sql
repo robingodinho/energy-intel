@@ -16,3 +16,4 @@ CREATE TABLE IF NOT EXISTS market_summaries (
 
 -- Add comment for documentation
 COMMENT ON TABLE market_summaries IS 'Cache for AI-generated market summary headlines';
+

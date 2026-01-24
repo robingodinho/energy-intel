@@ -28,8 +28,10 @@ export async function GET(request: NextRequest) {
     console.log('[/api/ingest-mozambique] Starting Mozambique-only ingestion...');
 
     const financeFeeds = getEnabledFeedsByType('finance');
+    // Only ingest from the 3 specific Club of Mozambique category feeds
+    // This excludes ESI Africa Mozambique and other Mozambique-related feeds
     const mozFeeds = financeFeeds.filter((feed) =>
-      /mozambique|club of mozambique/i.test(feed.name)
+      /^Club of Mozambique - (Economy|Mining & Energy|Business)$/i.test(feed.name)
     );
 
     const stats: IngestionStats = await runIngestion(mozFeeds);
@@ -94,3 +96,4 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return GET(request);
 }
+

@@ -21,7 +21,10 @@ export interface GetArticlesOptions {
 const FINANCE_SOURCES = [
   'Yahoo Finance',
   'CNBC Energy',
-  'Club of Mozambique',
+  'Club of Mozambique', // Generic name (may exist in database from old feeds)
+  'Club of Mozambique - Economy',
+  'Club of Mozambique - Mining & Energy',
+  'Club of Mozambique - Business',
   'ESI Africa Mozambique',
   'Engineering News Energy',
   'Mozambique Energy (Google News)',
@@ -96,7 +99,7 @@ export async function getArticles(
 
     // Exclude finance sources from main feed by default
     if (!includeFinance) {
-      // Filter out Yahoo Finance and CNBC Energy articles
+      // Filter out finance sources (exact matches)
       for (const source of FINANCE_SOURCES) {
         query = query.neq('source', source);
       }
@@ -117,7 +120,19 @@ export async function getArticles(
       return { articles: [], error: error.message };
     }
 
-    return { articles: (data as ArticleRow[]) || [], error: null };
+    // Filter out any Mozambique-related sources (catches variations and old entries)
+    // This is done in JavaScript to ensure we catch all variations
+    // BUT: Keep Mozambique articles in archive views (24h, 7d, 30d, 90d) so users can see previously ingested articles
+    let filteredArticles = (data as ArticleRow[]) || [];
+    if (!includeFinance && timeRange === 'latest') {
+      // Only exclude Mozambique articles from the "latest" feed
+      // Archive views should include all articles, including Mozambique
+      filteredArticles = filteredArticles.filter(
+        (article) => !article.source.toLowerCase().includes('mozambique')
+      );
+    }
+
+    return { articles: filteredArticles, error: null };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error('[getArticles] Error:', errorMsg);

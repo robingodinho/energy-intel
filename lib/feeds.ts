@@ -112,6 +112,14 @@ const NEWS_SOURCES: FeedSource[] = [
     // TODO: Find correct Reuters energy RSS URL
   },
   {
+    name: 'Reuters Sustainability & Climate (Google News)',
+    url: 'https://news.google.com/rss/search?q=site:reuters.com+sustainability+climate+energy',
+    enabled: false,
+    // Alternative: Use Google News RSS to aggregate Reuters sustainability/climate-energy articles
+    // Note: Reuters.com has bot protection (401 Unauthorized), so Google News is a workaround
+    // This will include articles from reuters.com/sustainability/climate-energy/
+  },
+  {
     name: 'S&P Global Energy',
     url: 'https://www.spglobal.com/commodityinsights/en/rss-feed/energy',
     enabled: false,
@@ -191,11 +199,25 @@ const FINANCE_SOURCES: FeedSource[] = [
     // More finance-focused Mozambique LNG/energy items via Google News
   },
   {
-    name: 'Club of Mozambique',
-    url: 'https://clubofmozambique.com/feed/',
+    name: 'Club of Mozambique - Economy',
+    url: 'https://clubofmozambique.com/news/category/economy/feed/',
     enabled: true,
     articleType: 'finance',
-    // General Mozambique news; pipeline filtering + categorization will keep energy items
+    // Mozambique economy category feed
+  },
+  {
+    name: 'Club of Mozambique - Mining & Energy',
+    url: 'https://clubofmozambique.com/news/category/mining-energy/feed/',
+    enabled: true,
+    articleType: 'finance',
+    // Mozambique mining & energy category feed
+  },
+  {
+    name: 'Club of Mozambique - Business',
+    url: 'https://clubofmozambique.com/news/category/business/feed/',
+    enabled: true,
+    articleType: 'finance',
+    // Mozambique business category feed
   },
   {
     name: 'ESI Africa Mozambique',

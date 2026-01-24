@@ -16,3 +16,4 @@ CREATE INDEX IF NOT EXISTS idx_articles_archived ON articles(is_archived);
 CREATE INDEX IF NOT EXISTS idx_articles_finance_archived 
 ON articles(article_type, is_archived, pub_date DESC) 
 WHERE article_type = 'finance';
+
