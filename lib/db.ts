@@ -266,11 +266,12 @@ export async function archiveOldFinanceArticles(
 
   try {
     // Get all non-archived articles for these sources, ordered by pub_date DESC
+    // Use .neq('is_archived', true) to include both false AND null values
     const { data: articles, error: fetchError } = await supabase
       .from('articles')
       .select('id, pub_date, source')
       .in('source', sources)
-      .eq('is_archived', false)
+      .or('is_archived.eq.false,is_archived.is.null')
       .order('pub_date', { ascending: false });
 
     if (fetchError) {

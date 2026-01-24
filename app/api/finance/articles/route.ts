@@ -31,10 +31,11 @@ export async function GET(request: NextRequest) {
     // Filter by archived status
     // Note: If is_archived column doesn't exist yet, this will return all articles
     // After running migration 003, this will properly filter
+    // Use .or() to include NULL values for non-archived articles (older articles may have NULL)
     if (showArchived) {
       query = query.eq('is_archived', true);
     } else {
-      query = query.eq('is_archived', false);
+      query = query.or('is_archived.eq.false,is_archived.is.null');
     }
 
     query = query.limit(limit);
