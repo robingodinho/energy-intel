@@ -1,6 +1,6 @@
 # Enerva: U.S. Energy Policy Intelligence Platform
 
-![Energy-Intel Landing Page](energy-intel.png)
+![Energy-Intel Landing Page](1.png)
 
 
 ## Overview
