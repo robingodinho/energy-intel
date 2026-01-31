@@ -558,7 +558,6 @@ export default function FinancePage() {
               {/* USD Amount Input */}
               <div className="mb-4">
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-lg">$</span>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -570,7 +569,7 @@ export default function FinancePage() {
                         setUsdAmountStr(val);
                       }
                     }}
-                    className="w-full bg-zinc-800/50 border border-zinc-700/40 rounded-xl py-3 pl-8 pr-16 
+                    className="w-full bg-zinc-800/50 border border-zinc-700/40 rounded-xl py-3 pl-4 pr-16 
                              text-zinc-300 text-lg font-medium placeholder-zinc-500
                              focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/25
                              transition-all duration-200"
@@ -807,7 +806,6 @@ export default function FinancePage() {
                 {/* USD Amount Input */}
                 <div className="px-4 py-3 border-b border-zinc-700/40">
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -819,7 +817,7 @@ export default function FinancePage() {
                           setUsdAmountStr(val);
                         }
                       }}
-                      className="w-full bg-zinc-800/50 border border-zinc-700/40 rounded-lg py-2 pl-7 pr-12 
+                      className="w-full bg-zinc-800/50 border border-zinc-700/40 rounded-lg py-2 pl-3 pr-12 
                                text-zinc-300 text-sm font-medium placeholder-zinc-500
                                focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/25
                                transition-all duration-200"
