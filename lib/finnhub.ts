@@ -44,12 +44,16 @@ export interface FinnhubNewsItem {
 
 // Top US Energy Companies
 export const ENERGY_STOCK_SYMBOLS = [
-  { symbol: 'XOM', name: 'Exxon Mobil' },
+  { symbol: 'XOM', name: 'ExxonMobil' },
   { symbol: 'CVX', name: 'Chevron' },
   { symbol: 'COP', name: 'ConocoPhillips' },
   { symbol: 'EOG', name: 'EOG Resources' },
   { symbol: 'SLB', name: 'Schlumberger' },
   { symbol: 'OXY', name: 'Occidental Petroleum' },
+  { symbol: 'TTE', name: 'TotalEnergies' },
+  { symbol: 'E', name: 'Eni' },
+  { symbol: 'SSL', name: 'Sasol' },
+  { symbol: 'SHEL', name: 'Shell' },
 ];
 
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';

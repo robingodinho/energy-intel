@@ -52,12 +52,16 @@ function getArticleImage(article: FinanceArticle): string | null {
 
 // Fallback data
 const FALLBACK_STOCKS: Stock[] = [
-  { symbol: 'XOM', companyName: 'Exxon Mobil', currentPrice: 105.42, change: 1.23, changePercent: 1.18 },
+  { symbol: 'XOM', companyName: 'ExxonMobil', currentPrice: 105.42, change: 1.23, changePercent: 1.18 },
   { symbol: 'CVX', companyName: 'Chevron', currentPrice: 148.76, change: -0.89, changePercent: -0.60 },
   { symbol: 'COP', companyName: 'ConocoPhillips', currentPrice: 103.21, change: 2.15, changePercent: 2.13 },
   { symbol: 'EOG', companyName: 'EOG Resources', currentPrice: 128.54, change: 0.67, changePercent: 0.52 },
   { symbol: 'SLB', companyName: 'Schlumberger', currentPrice: 42.18, change: -0.34, changePercent: -0.80 },
-  { symbol: 'OXY', companyName: 'Occidental', currentPrice: 47.92, change: 1.05, changePercent: 2.24 },
+  { symbol: 'OXY', companyName: 'Occidental Petroleum', currentPrice: 47.92, change: 1.05, changePercent: 2.24 },
+  { symbol: 'TTE', companyName: 'TotalEnergies', currentPrice: 62.75, change: 0.64, changePercent: 1.03 },
+  { symbol: 'E', companyName: 'Eni', currentPrice: 31.28, change: 0.22, changePercent: 0.71 },
+  { symbol: 'SSL', companyName: 'Sasol', currentPrice: 7.41, change: -0.08, changePercent: -1.07 },
+  { symbol: 'SHEL', companyName: 'Shell', currentPrice: 70.12, change: 0.38, changePercent: 0.55 },
 ];
 
 const FALLBACK_FOREX: ForexRate[] = [
@@ -98,6 +102,10 @@ const QA_SOURCES = new Set<string>([
   'QNA Economy Local (RSS)', // Legacy - no longer used
   'QNA Economy International (RSS)', // Legacy - no longer used
 ]);
+
+const US_STOCK_SYMBOLS = ['XOM', 'CVX', 'COP', 'EOG', 'SLB', 'OXY'];
+const MOZ_STOCK_SYMBOLS = ['XOM', 'TTE', 'E', 'SSL', 'SHEL', 'OXY'];
+const QA_STOCK_SYMBOLS = ['XOM', 'TTE', 'E', 'SHEL', 'CVX', 'COP'];
 
 type Market = 'US' | 'MZ' | 'QA';
 
@@ -273,6 +281,18 @@ export default function FinancePage() {
       rates: forexRates.filter(r => r.pair !== 'MZN' && r.pair !== 'QAR'),
     };
   }, [forexRates, selectedMarket]);
+
+  const visibleStocks = useMemo(() => {
+    const symbolOrder = selectedMarket === 'MZ'
+      ? MOZ_STOCK_SYMBOLS
+      : selectedMarket === 'QA'
+        ? QA_STOCK_SYMBOLS
+        : US_STOCK_SYMBOLS;
+    const stockBySymbol = new Map(stocks.map(stock => [stock.symbol, stock]));
+    return symbolOrder
+      .map(symbol => stockBySymbol.get(symbol))
+      .filter((stock): stock is Stock => Boolean(stock));
+  }, [stocks, selectedMarket]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -509,7 +529,7 @@ export default function FinancePage() {
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {stocks.map((stock, index) => (
+                {visibleStocks.map((stock, index) => (
                   <div 
                     key={stock.symbol}
                     className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl p-4 
