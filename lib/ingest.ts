@@ -1,7 +1,7 @@
 import { getEnabledFeeds, getEnabledFeedsByType } from './feeds';
 import { fetchAllFeeds, getFetchStats, FetchFeedResult } from './fetchFeed';
 import { normalizeFeedItems, PartialArticle } from './normalizeFeedItem';
-import { insertArticles, getExistingArticleIds, getExistingArticleTitles, ArticleInsert } from './db';
+import { insertArticles, getExistingArticleIds, getExistingArticleTitles, updateMissingImages, ArticleInsert } from './db';
 import { ArticleCategory, FeedSource } from '@/types/article';
 import { summarizeArticle, isOpenAIConfigured, getFallbackSummary } from './summarize';
 
@@ -102,6 +102,7 @@ function toArticleInsert(article: PartialArticle, summary: string): ArticleInser
     summary,
     // Preserve the source article type so finance feeds are queryable
     article_type: article.article_type || 'policy',
+    image_url: article.image_url ?? null,
   };
 }
 
@@ -258,6 +259,15 @@ export async function runIngestion(
   
   devLog(`Found ${existingIds.size} existing IDs, ${afterIdDedup.length} remain after ID dedup`);
 
+  // Prepare image updates for existing articles that are missing image_url
+  const imageUpdatesById = new Map<string, string>();
+  for (const article of batchDeduped) {
+    if (existingIds.has(article.id) && article.image_url) {
+      imageUpdatesById.set(article.id, article.image_url);
+    }
+  }
+  const imageUpdates = Array.from(imageUpdatesById, ([id, image_url]) => ({ id, image_url }));
+
   // Step 3: Check for duplicate titles in database (catches same article with different ID)
   const remainingTitles = afterIdDedup.map(a => a.title);
   const existingTitles = await getExistingArticleTitles(remainingTitles);
@@ -346,6 +356,16 @@ export async function runIngestion(
         const sourceArticles = allArticles.filter(a => a.source === sourceResult.source);
         sourceResult.itemsInserted = sourceArticles.length;
       }
+    }
+  }
+
+  if (imageUpdates.length > 0) {
+    const { updated, errors } = await updateMissingImages(imageUpdates);
+    if (updated > 0) {
+      devLog(`Updated ${updated} existing articles with feed images`);
+    }
+    if (errors.length > 0) {
+      allErrors.push(...errors);
     }
   }
 

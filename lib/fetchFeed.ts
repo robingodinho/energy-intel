@@ -11,6 +11,9 @@ const parser = new Parser({
     'User-Agent': 'Mozilla/5.0 (compatible; EnergyIntelBot/1.0; +https://github.com/energy-intel)',
     'Accept': 'application/rss+xml, application/xml, application/atom+xml, text/xml, */*',
   },
+  customFields: {
+    item: ['media:content', 'media:thumbnail', 'media:group', 'image', 'enclosure'],
+  },
 });
 
 /**
@@ -140,6 +143,10 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
         content: item.content,
         contentSnippet: item.contentSnippet,
         guid: item.guid,
+        enclosure: item.enclosure,
+        image: (item as RawFeedItem).image,
+        'media:content': (item as RawFeedItem)['media:content'],
+        'media:thumbnail': (item as RawFeedItem)['media:thumbnail'],
       }));
 
       devLog(`${feed.name}: ✅ Parsed ${items.length} items`);

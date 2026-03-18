@@ -62,6 +62,115 @@ export function parsePublicationDate(item: RawFeedItem): string {
   return new Date().toISOString();
 }
 
+/**
+ * Normalize a candidate image URL from a feed item
+ */
+function normalizeImageUrl(rawUrl: string, baseUrl?: string): string | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  try {
+    const resolved = baseUrl ? new URL(trimmed, baseUrl) : new URL(trimmed);
+    if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') return null;
+    return resolved.href;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract a URL from media:content or media:thumbnail values
+ */
+function extractMediaUrl(value: unknown, baseUrl?: string): string | null {
+  if (!value) return null;
+
+  if (typeof value === 'string') {
+    return normalizeImageUrl(value, baseUrl);
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const url = extractMediaUrl(entry, baseUrl);
+      if (url) return url;
+    }
+    return null;
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (typeof record.url === 'string') {
+      return normalizeImageUrl(record.url, baseUrl);
+    }
+    if (typeof record.href === 'string') {
+      return normalizeImageUrl(record.href, baseUrl);
+    }
+    const attrs = record.$ as Record<string, unknown> | undefined;
+    if (attrs) {
+      if (typeof attrs.url === 'string') {
+        return normalizeImageUrl(attrs.url, baseUrl);
+      }
+      if (typeof attrs.href === 'string') {
+        return normalizeImageUrl(attrs.href, baseUrl);
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Try to get a feed-provided image URL
+ */
+function extractFeedImage(item: RawFeedItem): string | null {
+  const baseUrl = item.link;
+
+  if (item.enclosure?.url) {
+    const enclosureUrl = normalizeImageUrl(item.enclosure.url, baseUrl);
+    if (enclosureUrl) return enclosureUrl;
+  }
+
+  const mediaUrl =
+    extractMediaUrl(item['media:content'], baseUrl) ||
+    extractMediaUrl(item['media:thumbnail'], baseUrl);
+  if (mediaUrl) return mediaUrl;
+
+  if (typeof item.image === 'string') {
+    return normalizeImageUrl(item.image, baseUrl);
+  }
+
+  if (item.image && typeof item.image === 'object' && 'url' in item.image) {
+    const urlValue = (item.image as { url?: string }).url;
+    if (typeof urlValue === 'string') {
+      return normalizeImageUrl(urlValue, baseUrl);
+    }
+  }
+
+  const htmlCandidate = item.content || item.contentSnippet || '';
+  const htmlImage = extractImgSrcFromHtml(htmlCandidate, baseUrl);
+  if (htmlImage) return htmlImage;
+
+  return null;
+}
+
+/**
+ * Extract the first <img src> from an HTML-ish string
+ */
+function extractImgSrcFromHtml(value: string, baseUrl?: string): string | null {
+  if (!value) return null;
+
+  const decoded = value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+
+  const match = decoded.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (!match || !match[1]) return null;
+
+  return normalizeImageUrl(match[1], baseUrl);
+}
+
 
 /**
  * Normalize a raw feed item into a partial article
@@ -86,6 +195,7 @@ export function normalizeFeedItem(
 
   const title = item.title.trim();
   const content = item.contentSnippet || item.content || '';
+  const imageUrl = extractFeedImage(item);
   
   return {
     id: generateArticleId(item),
@@ -95,6 +205,7 @@ export function normalizeFeedItem(
     source,
     category: categorizeArticle(title, content),
     article_type: articleType,
+    image_url: imageUrl,
   };
 }
 

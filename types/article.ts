@@ -78,6 +78,14 @@ export interface RawFeedItem {
   content?: string;
   contentSnippet?: string;
   guid?: string;
+  enclosure?: {
+    url?: string;
+    type?: string;
+    length?: string;
+  };
+  image?: { url?: string } | string;
+  'media:content'?: unknown;
+  'media:thumbnail'?: unknown;
 }
 
 /**

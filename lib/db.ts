@@ -78,10 +78,43 @@ export async function insertArticles(
   return { inserted, errors };
 }
 
+/**
+ * Update image_url only when currently null
+ * 
+ * @param images - Array of article id + image_url pairs
+ */
+export async function updateMissingImages(
+  images: { id: string; image_url: string }[]
+): Promise<{ updated: number; errors: string[] }> {
+  if (images.length === 0) {
+    return { updated: 0, errors: [] };
+  }
+
+  const supabase = getSupabase();
+  const errors: string[] = [];
+  let updated = 0;
+
+  for (const image of images) {
+    const { data, error } = await supabase
+      .from('articles')
+      .update({ image_url: image.image_url })
+      .eq('id', image.id)
+      .is('image_url', null)
+      .select('id');
+
+    if (error) {
+      errors.push(`Update image failed for ${image.id}: ${error.message}`);
+    } else {
+      updated += data?.length ?? 0;
+    }
+  }
+
+  return { updated, errors };
+}
+
 // Finance sources to exclude from main feed
 const FINANCE_SOURCES = [
   'Yahoo Finance',
-  'CNBC Energy',
   'Club of Mozambique', // Generic name (may exist in database from old feeds)
   'Club of Mozambique - Economy',
   'Club of Mozambique - Mining & Energy',
