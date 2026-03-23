@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { ArticleRow } from '@/types/article';
-import { getArticleImage, getCategoryPlaceholder, isPlaceholderImage } from '@/lib/images';
+import { getArticleImage, getCategoryPlaceholders, isPlaceholderImage } from '@/lib/images';
 import { formatTimeAgo } from '@/lib/getArticles';
 
 interface ArticleCardProps {
@@ -13,8 +13,8 @@ interface ArticleCardProps {
 
 /**
  * Article Image Component
- * 
- * Handles both external images (with Next/Image) and local SVG placeholders (with img tag)
+ *
+ * Handles both external images (with Next/Image) and local placeholders (with img tag).
  */
 function ArticleImage({ 
   src, 
@@ -32,24 +32,28 @@ function ArticleImage({
   className?: string;
 }) {
   const [imageSrc, setImageSrc] = useState(src);
-  const [hasError, setHasError] = useState(false);
+  const fallbackCandidates = getCategoryPlaceholders(fallbackCategory);
   
   // Reset state when src prop changes (e.g., when article changes)
   useEffect(() => {
     setImageSrc(src);
-    setHasError(false);
   }, [src]);
   
   const isPlaceholder = isPlaceholderImage(imageSrc);
 
   const handleError = () => {
-    if (!hasError) {
-      setHasError(true);
-      setImageSrc(getCategoryPlaceholder(fallbackCategory as any));
-    }
+    setImageSrc((currentSrc) => {
+      if (!isPlaceholderImage(currentSrc)) {
+        return fallbackCandidates[0] || currentSrc;
+      }
+
+      const currentFallbackIndex = fallbackCandidates.indexOf(currentSrc);
+      const nextFallback = fallbackCandidates[currentFallbackIndex + 1];
+      return nextFallback || currentSrc;
+    });
   };
 
-  // For local SVG placeholders, use a regular img tag
+  // For local placeholders, use a regular img tag.
   if (isPlaceholder) {
     return (
       // eslint-disable-next-line @next/next/no-img-element

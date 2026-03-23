@@ -2,18 +2,19 @@ import { ArticleCategory } from '@/types/article';
 
 /**
  * Placeholder image mapping for article categories
- * 
- * These are fallback SVG placeholders used when:
+ *
+ * These placeholders are used when:
  * - image_url is null/undefined
  * - image_url fails to load
  */
-const CATEGORY_IMAGES: Record<ArticleCategory | 'default', string> = {
-  'LNG': '/placeholders/lng.svg',
-  'Renewable Energy': '/placeholders/renewable-energy.svg',
-  'Energy Policy': '/placeholders/energy-policy.svg',
-  'Emissions': '/placeholders/emissions.svg',
-  'Infrastructure': '/placeholders/infrastructure.svg',
-  'default': '/placeholders/default.svg',
+const CATEGORY_PLACEHOLDER_IMAGES: Record<ArticleCategory | 'default', string[]> = {
+  'LNG': ['/placeholders/lng.jpg', '/placeholders/lng.png', '/placeholders/lng.svg'],
+  'Renewable Energy': ['/placeholders/renewable-energy.jpg', '/placeholders/renewable-energy.png', '/placeholders/renewable-energy.svg'],
+  // Support both kebab-case and underscore filenames for energy policy.
+  'Energy Policy': ['/placeholders/energy-policy.jpg', '/placeholders/energy-policy.png', '/placeholders/energy_policy.png', '/placeholders/energy-policy.svg'],
+  'Emissions': ['/placeholders/emissions.jpg', '/placeholders/emissions.png', '/placeholders/emissions.svg'],
+  'Infrastructure': ['/placeholders/infrastructure.jpg', '/placeholders/infrastructure.png', '/placeholders/infrastructure.svg'],
+  'default': ['/placeholders/default.jpg', '/placeholders/default.png', '/placeholders/default.svg'],
 };
 
 /**
@@ -50,12 +51,7 @@ export function getArticleImage(article: {
   }
 
   // Use category-based placeholder
-  const category = article.category as ArticleCategory;
-  if (category && CATEGORY_IMAGES[category]) {
-    return CATEGORY_IMAGES[category];
-  }
-
-  return CATEGORY_IMAGES.default;
+  return getCategoryPlaceholders(article.category)[0];
 }
 
 /**
@@ -79,10 +75,24 @@ function isValidImageUrl(url: string): boolean {
 }
 
 /**
- * Get placeholder image for a category
+ * Get ordered placeholder candidates for a category.
+ * Returns category-specific placeholders first, then defaults.
+ */
+export function getCategoryPlaceholders(category?: ArticleCategory | string): string[] {
+  const normalizedCategory = category as ArticleCategory | undefined;
+  const categoryCandidates = normalizedCategory
+    ? CATEGORY_PLACEHOLDER_IMAGES[normalizedCategory]
+    : undefined;
+
+  const merged = [...(categoryCandidates || []), ...CATEGORY_PLACEHOLDER_IMAGES.default];
+  return [...new Set(merged)];
+}
+
+/**
+ * Get primary placeholder image for a category.
  */
 export function getCategoryPlaceholder(category: ArticleCategory): string {
-  return CATEGORY_IMAGES[category] || CATEGORY_IMAGES.default;
+  return getCategoryPlaceholders(category)[0];
 }
 
 /**
