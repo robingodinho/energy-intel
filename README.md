@@ -28,13 +28,13 @@ Rather than reacting to user traffic, Energy-Intel operates as a **pre-processed
 To support U.S. energy policy formulation and infrastructure decision-making by providing a centralized, AI-driven intelligence platform that delivers timely, authoritative references to energy policies, regulatory actions, and sector-critical developments of national interest.
 
 **Policy Gap Addressed:**  
-Energy-related information is often fragmented across agencies, released faster than traditional analysis cycles, and difficult to synthesize at scale. Energy-Intel addresses this gap by automating ingestion and synthesis.
+Energy-related information is often fragmented across agencies, released faster than traditional analysis cycles, and difficult to synthesize at scale. Enerva addresses this gap by automating ingestion and synthesis.
 
 ---
 
 ## Policy & Decision-Making Use Cases
 
-Energy-Intel is designed to support real-world policy and infrastructure workflows, including:
+Enerva is designed to support real-world policy and infrastructure workflows, including:
 
 - Monitoring federal and state energy regulatory developments
 - Identifying emerging risks to grid reliability and energy affordability
