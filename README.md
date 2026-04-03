@@ -51,7 +51,7 @@ The platform emphasizes speed, clarity, and reliability to reduce information la
 If referencing Energy-Intel in academic, policy, or professional work, please cite:
 
 Energy-Intel: U.S. Energy Policy Intelligence Platform  
-https://energy-intel.org
+https://enerva.ai
 
 ---
 
