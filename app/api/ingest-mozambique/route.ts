@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { runIngestion, IngestionStats } from '@/lib/ingest';
 import { getEnabledFeedsByType } from '@/lib/feeds';
-import { archiveOldFinanceArticles } from '@/lib/db';
+import { archiveOldFinanceArticles, getSupabase } from '@/lib/db';
+import { scrapeArticleImage } from '@/lib/scrapeImage';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
 
   try {
     console.log('[/api/ingest-mozambique] Starting Mozambique-only ingestion...');
+    const supabase = getSupabase();
 
     const financeFeeds = getEnabledFeedsByType('finance');
     // Only ingest from the 3 specific Club of Mozambique category feeds
@@ -54,6 +56,44 @@ export async function GET(request: NextRequest) {
     }
     if (archiveResult.error) {
       console.warn('[/api/ingest-mozambique] Archive warning:', archiveResult.error);
+    }
+
+    // Club of Mozambique RSS recently stopped including image fields.
+    // Run a focused enrichment pass immediately so fresh Mozambique cards
+    // don't stay without cover images while waiting for generic enrich jobs.
+    let mozImageUpdates = 0;
+    const { data: mozMissingImages, error: mozMissingError } = await supabase
+      .from('articles')
+      .select('id, link, source, title')
+      .in('source', mozSources)
+      .is('image_url', null)
+      .order('pub_date', { ascending: false })
+      .limit(12);
+
+    if (mozMissingError) {
+      console.warn('[/api/ingest-mozambique] Image enrichment query warning:', mozMissingError.message);
+    } else if (mozMissingImages && mozMissingImages.length > 0) {
+      console.log(`[/api/ingest-mozambique] Enriching ${mozMissingImages.length} Mozambique articles missing images...`);
+      for (const article of mozMissingImages) {
+        const scrapeResult = await scrapeArticleImage(article.link);
+        if (scrapeResult.success && scrapeResult.imageUrl) {
+          const { error: updateError } = await supabase
+            .from('articles')
+            .update({ image_url: scrapeResult.imageUrl })
+            .eq('id', article.id);
+
+          if (updateError) {
+            console.warn(`[/api/ingest-mozambique] Image update warning for ${article.id}:`, updateError.message);
+          } else {
+            mozImageUpdates++;
+          }
+        } else {
+          console.warn(`[/api/ingest-mozambique] Image scrape failed for ${article.source}: ${scrapeResult.error || 'Unknown error'}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      console.log(`[/api/ingest-mozambique] Enriched ${mozImageUpdates} Mozambique article images`);
     }
 
     try {
@@ -84,6 +124,7 @@ export async function GET(request: NextRequest) {
             skipped: stats.totalItemsSkipped,
             dbErrors: stats.totalDbErrors,
             archived: archiveResult.archived,
+            imageEnriched: mozImageUpdates,
           },
           perSource: stats.perSource.map((s) => ({
             source: s.source,
