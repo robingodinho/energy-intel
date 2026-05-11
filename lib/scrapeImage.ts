@@ -289,6 +289,88 @@ function resolveSrcOrSrcset(raw: string, baseUrl: string): string | null {
 }
 
 /**
+ * Club of Mozambique fallback:
+ * If direct article fetch is blocked (403), resolve the post's featured image
+ * through the public WordPress REST API.
+ */
+async function fetchClubOfMozambiqueImage(articleUrl: string): Promise<string | null> {
+  try {
+    const parsed = new URL(articleUrl);
+    if (!parsed.hostname.includes('clubofmozambique.com')) {
+      return null;
+    }
+
+    const pathParts = parsed.pathname.split('/').filter(Boolean);
+    const slug = pathParts[pathParts.length - 1];
+    if (!slug) return null;
+
+    const headers = {
+      'User-Agent': getRandomUserAgent(),
+      'Accept': 'application/json',
+    };
+
+    const postResponse = await fetch(
+      `${parsed.origin}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed=wp:featuredmedia`,
+      {
+        headers,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+
+    if (!postResponse.ok) return null;
+
+    const posts = (await postResponse.json()) as unknown;
+    if (!Array.isArray(posts) || posts.length === 0) return null;
+
+    const post = posts[0] as Record<string, unknown>;
+    const embedded = post._embedded as Record<string, unknown> | undefined;
+    const featuredMedia = embedded?.['wp:featuredmedia'];
+
+    if (Array.isArray(featuredMedia)) {
+      for (const media of featuredMedia) {
+        if (media && typeof media === 'object') {
+          const sourceUrl = (media as Record<string, unknown>).source_url;
+          if (typeof sourceUrl === 'string') {
+            const resolved = resolveImageUrl(sourceUrl, articleUrl);
+            if (resolved && isLikelyGoodImage(resolved)) {
+              return resolved;
+            }
+          }
+        }
+      }
+    }
+
+    const featuredMediaId = post.featured_media;
+    if (typeof featuredMediaId === 'number' && featuredMediaId > 0) {
+      const mediaResponse = await fetch(
+        `${parsed.origin}/wp-json/wp/v2/media/${featuredMediaId}`,
+        {
+          headers,
+          redirect: 'follow',
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+
+      if (mediaResponse.ok) {
+        const media = (await mediaResponse.json()) as Record<string, unknown>;
+        const sourceUrl = media.source_url;
+        if (typeof sourceUrl === 'string') {
+          const resolved = resolveImageUrl(sourceUrl, articleUrl);
+          if (resolved && isLikelyGoodImage(resolved)) {
+            return resolved;
+          }
+        }
+      }
+    }
+  } catch {
+    // Silent fallback; caller reports original scrape failure if needed.
+  }
+
+  return null;
+}
+
+/**
  * Scrape OpenGraph/Twitter image from an article URL
  * 
  * @param articleUrl - The article page URL to scrape
@@ -318,6 +400,10 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
 
     // Check response
     if (!response.ok) {
+      const fallbackImage = await fetchClubOfMozambiqueImage(articleUrl);
+      if (fallbackImage) {
+        return { success: true, imageUrl: fallbackImage };
+      }
       return { success: false, error: `HTTP ${response.status}` };
     }
 
@@ -339,6 +425,12 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
         console.log(`[scrapeImage] Found image for ${articleUrl.slice(0, 50)}: ${imageUrl.slice(0, 80)}`);
       }
       return { success: true, imageUrl };
+    }
+
+    // Domain-specific fallback when HTML parsing fails despite a valid post.
+    const fallbackImage = await fetchClubOfMozambiqueImage(articleUrl);
+    if (fallbackImage) {
+      return { success: true, imageUrl: fallbackImage };
     }
 
     return { success: false, error: 'No image found' };
