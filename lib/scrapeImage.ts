@@ -289,6 +289,55 @@ function resolveSrcOrSrcset(raw: string, baseUrl: string): string | null {
 }
 
 /**
+ * Reader-proxy fallback:
+ *
+ * Many sources (Club of Mozambique, S&P Global, IEA, etc.) sit behind
+ * Cloudflare bot protection that blocks Vercel serverless IPs with HTTP 403,
+ * even though the same URL returns 200 from a browser. r.jina.ai is a free
+ * public reader that fetches the URL from its own IP pool and returns the
+ * rendered page, which lets us reuse the existing HTML image extractor.
+ *
+ * Returns the rendered HTML body, or null if the proxy itself fails.
+ */
+async function fetchPageViaReaderProxy(articleUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(`https://r.jina.ai/${articleUrl}`, {
+      headers: {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'application/json',
+        'X-Return-Format': 'html',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      if (isDev) {
+        console.warn(
+          `[scrapeImage] Reader proxy returned ${response.status} for ${articleUrl.slice(0, 80)}`
+        );
+      }
+      return null;
+    }
+
+    const payload = (await response.json()) as unknown;
+    if (!payload || typeof payload !== 'object') return null;
+
+    const data = (payload as Record<string, unknown>).data;
+    if (!data || typeof data !== 'object') return null;
+
+    const html = (data as Record<string, unknown>).html;
+    return typeof html === 'string' && html.length > 0 ? html : null;
+  } catch (err) {
+    if (isDev) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      console.warn(`[scrapeImage] Reader proxy error for ${articleUrl.slice(0, 80)}: ${msg}`);
+    }
+    return null;
+  }
+}
+
+/**
  * Club of Mozambique fallback:
  * If direct article fetch is blocked (403), resolve the post's featured image
  * through the public WordPress REST API.
@@ -308,6 +357,27 @@ async function fetchClubOfMozambiqueImage(articleUrl: string): Promise<string | 
       'User-Agent': getRandomUserAgent(),
       'Accept': 'application/json',
     };
+
+    // Fast path: oEmbed often remains accessible even when article HTML is blocked.
+    const oembedResponse = await fetch(
+      `${parsed.origin}/wp-json/oembed/1.0/embed?url=${encodeURIComponent(articleUrl)}`,
+      {
+        headers,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+
+    if (oembedResponse.ok) {
+      const oembed = (await oembedResponse.json()) as Record<string, unknown>;
+      const thumbnailUrl = oembed.thumbnail_url;
+      if (typeof thumbnailUrl === 'string') {
+        const resolved = resolveImageUrl(thumbnailUrl, articleUrl);
+        if (resolved && isLikelyGoodImage(resolved)) {
+          return resolved;
+        }
+      }
+    }
 
     const postResponse = await fetch(
       `${parsed.origin}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed=wp:featuredmedia`,
@@ -400,11 +470,32 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
 
     // Check response
     if (!response.ok) {
-      const fallbackImage = await fetchClubOfMozambiqueImage(articleUrl);
-      if (fallbackImage) {
-        return { success: true, imageUrl: fallbackImage };
+      const status = response.status;
+
+      // Domain-specific WordPress fallback (cheap, JSON-only)
+      const clubFallback = await fetchClubOfMozambiqueImage(articleUrl);
+      if (clubFallback) {
+        return { success: true, imageUrl: clubFallback };
       }
-      return { success: false, error: `HTTP ${response.status}` };
+
+      // Generic reader-proxy fallback for Cloudflare-blocked pages.
+      // Skip 401 because those are paywalls (auth required), not bot blocks.
+      if (status !== 401) {
+        const proxiedHtml = await fetchPageViaReaderProxy(articleUrl);
+        if (proxiedHtml) {
+          const proxyImage = extractImageFromHtml(proxiedHtml.slice(0, 100000), articleUrl);
+          if (proxyImage) {
+            if (isDev) {
+              console.log(
+                `[scrapeImage] Recovered via reader proxy: ${articleUrl.slice(0, 50)} -> ${proxyImage.slice(0, 80)}`
+              );
+            }
+            return { success: true, imageUrl: proxyImage };
+          }
+        }
+      }
+
+      return { success: false, error: `HTTP ${status}` };
     }
 
     // Check content type
@@ -428,9 +519,24 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
     }
 
     // Domain-specific fallback when HTML parsing fails despite a valid post.
-    const fallbackImage = await fetchClubOfMozambiqueImage(articleUrl);
-    if (fallbackImage) {
-      return { success: true, imageUrl: fallbackImage };
+    const clubFallback = await fetchClubOfMozambiqueImage(articleUrl);
+    if (clubFallback) {
+      return { success: true, imageUrl: clubFallback };
+    }
+
+    // Reader proxy can also recover images that our HTML extractor misses,
+    // e.g. when the upstream HTML is heavily lazy-loaded or behind JS rendering.
+    const proxiedHtml = await fetchPageViaReaderProxy(articleUrl);
+    if (proxiedHtml) {
+      const proxyImage = extractImageFromHtml(proxiedHtml.slice(0, 100000), articleUrl);
+      if (proxyImage) {
+        if (isDev) {
+          console.log(
+            `[scrapeImage] Recovered via reader proxy (no-image path): ${articleUrl.slice(0, 50)} -> ${proxyImage.slice(0, 80)}`
+          );
+        }
+        return { success: true, imageUrl: proxyImage };
+      }
     }
 
     return { success: false, error: 'No image found' };
