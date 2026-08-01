@@ -289,32 +289,40 @@ function resolveSrcOrSrcset(raw: string, baseUrl: string): string | null {
 }
 
 /**
- * Reader-proxy fallback:
+ * Metadata-service fallback (Microlink).
  *
  * Many sources (Club of Mozambique, S&P Global, IEA, etc.) sit behind
- * Cloudflare bot protection that blocks Vercel serverless IPs with HTTP 403,
- * even though the same URL returns 200 from a browser. r.jina.ai is a free
- * public reader that fetches the URL from its own IP pool and returns the
- * rendered page, which lets us reuse the existing HTML image extractor.
+ * Cloudflare bot protection that returns HTTP 403 for Vercel's serverless
+ * IP ranges even though the same URL loads normally from a browser. That
+ * blocking applies to /wp-json endpoints and to public reader proxies
+ * (r.jina.ai, allorigins, corsproxy.io, codetabs) as well, so a plain HTTP
+ * fetch cannot recover the image.
  *
- * Returns the rendered HTML body, or null if the proxy itself fails.
+ * Microlink runs its own headless-browser fleet on IPs that aren't in
+ * Cloudflare's blocklists and returns the resolved og:image URL directly,
+ * so we don't have to re-parse HTML. Free tier is 50 requests/day per IP;
+ * Vercel serverless functions receive rotating egress IPs, so the effective
+ * quota is well above what image enrichment needs.
+ *
+ * Returns the resolved absolute image URL, or null if the service can't
+ * find one (or can't be reached).
  */
-async function fetchPageViaReaderProxy(articleUrl: string): Promise<string | null> {
+async function fetchImageViaMetadataService(articleUrl: string): Promise<string | null> {
   try {
-    const response = await fetch(`https://r.jina.ai/${articleUrl}`, {
+    const endpoint = `https://api.microlink.io/?url=${encodeURIComponent(articleUrl)}`;
+    const response = await fetch(endpoint, {
       headers: {
         'User-Agent': getRandomUserAgent(),
         'Accept': 'application/json',
-        'X-Return-Format': 'html',
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(20000),
     });
 
     if (!response.ok) {
       if (isDev) {
         console.warn(
-          `[scrapeImage] Reader proxy returned ${response.status} for ${articleUrl.slice(0, 80)}`
+          `[scrapeImage] Microlink returned ${response.status} for ${articleUrl.slice(0, 80)}`
         );
       }
       return null;
@@ -323,15 +331,39 @@ async function fetchPageViaReaderProxy(articleUrl: string): Promise<string | nul
     const payload = (await response.json()) as unknown;
     if (!payload || typeof payload !== 'object') return null;
 
-    const data = (payload as Record<string, unknown>).data;
+    const record = payload as Record<string, unknown>;
+    if (record.status !== 'success') {
+      if (isDev) {
+        console.warn(
+          `[scrapeImage] Microlink status=${String(record.status)} for ${articleUrl.slice(0, 80)}`
+        );
+      }
+      return null;
+    }
+
+    const data = record.data as Record<string, unknown> | undefined;
     if (!data || typeof data !== 'object') return null;
 
-    const html = (data as Record<string, unknown>).html;
-    return typeof html === 'string' && html.length > 0 ? html : null;
+    // Microlink exposes several image-like fields. Prefer the article image,
+    // then screenshot, then logo (a branded image is better than nothing).
+    const candidates: unknown[] = [data.image, data.screenshot];
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'object') {
+        const raw = (candidate as Record<string, unknown>).url;
+        if (typeof raw === 'string') {
+          const resolved = resolveImageUrl(raw, articleUrl);
+          if (resolved && isLikelyGoodImage(resolved)) {
+            return resolved;
+          }
+        }
+      }
+    }
+
+    return null;
   } catch (err) {
     if (isDev) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      console.warn(`[scrapeImage] Reader proxy error for ${articleUrl.slice(0, 80)}: ${msg}`);
+      console.warn(`[scrapeImage] Microlink error for ${articleUrl.slice(0, 80)}: ${msg}`);
     }
     return null;
   }
@@ -472,26 +504,25 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
     if (!response.ok) {
       const status = response.status;
 
-      // Domain-specific WordPress fallback (cheap, JSON-only)
+      // Domain-specific WordPress fallback (cheap, JSON-only). Kept in place
+      // because if Cloudflare ever loosens on /wp-json we get a free hit
+      // without spending a Microlink quota call.
       const clubFallback = await fetchClubOfMozambiqueImage(articleUrl);
       if (clubFallback) {
         return { success: true, imageUrl: clubFallback };
       }
 
-      // Generic reader-proxy fallback for Cloudflare-blocked pages.
+      // Metadata-service fallback for Cloudflare-blocked pages.
       // Skip 401 because those are paywalls (auth required), not bot blocks.
       if (status !== 401) {
-        const proxiedHtml = await fetchPageViaReaderProxy(articleUrl);
-        if (proxiedHtml) {
-          const proxyImage = extractImageFromHtml(proxiedHtml.slice(0, 100000), articleUrl);
-          if (proxyImage) {
-            if (isDev) {
-              console.log(
-                `[scrapeImage] Recovered via reader proxy: ${articleUrl.slice(0, 50)} -> ${proxyImage.slice(0, 80)}`
-              );
-            }
-            return { success: true, imageUrl: proxyImage };
+        const metaImage = await fetchImageViaMetadataService(articleUrl);
+        if (metaImage) {
+          if (isDev) {
+            console.log(
+              `[scrapeImage] Recovered via metadata service: ${articleUrl.slice(0, 50)} -> ${metaImage.slice(0, 80)}`
+            );
           }
+          return { success: true, imageUrl: metaImage };
         }
       }
 
@@ -524,19 +555,16 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
       return { success: true, imageUrl: clubFallback };
     }
 
-    // Reader proxy can also recover images that our HTML extractor misses,
+    // Metadata service can also recover images that our HTML extractor misses,
     // e.g. when the upstream HTML is heavily lazy-loaded or behind JS rendering.
-    const proxiedHtml = await fetchPageViaReaderProxy(articleUrl);
-    if (proxiedHtml) {
-      const proxyImage = extractImageFromHtml(proxiedHtml.slice(0, 100000), articleUrl);
-      if (proxyImage) {
-        if (isDev) {
-          console.log(
-            `[scrapeImage] Recovered via reader proxy (no-image path): ${articleUrl.slice(0, 50)} -> ${proxyImage.slice(0, 80)}`
-          );
-        }
-        return { success: true, imageUrl: proxyImage };
+    const metaImage = await fetchImageViaMetadataService(articleUrl);
+    if (metaImage) {
+      if (isDev) {
+        console.log(
+          `[scrapeImage] Recovered via metadata service (no-image path): ${articleUrl.slice(0, 50)} -> ${metaImage.slice(0, 80)}`
+        );
       }
+      return { success: true, imageUrl: metaImage };
     }
 
     return { success: false, error: 'No image found' };
