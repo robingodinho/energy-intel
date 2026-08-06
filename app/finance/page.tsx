@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { EnervaBrand } from '@/components/EnervaBrand';
+import { getCategoryPlaceholders } from '@/lib/images';
 
 // Types for API responses
 interface Stock {
@@ -44,10 +45,61 @@ const SOURCE_FALLBACK_IMAGES: Record<string, string> = {
   'Yahoo Finance': 'https://s.yimg.com/cv/apiv2/cv/apiv2/social/images/yahoo-finance-default-logo.png',
 };
 
-// Get display image for an article (use fallback if no image)
-function getArticleImage(article: FinanceArticle): string | null {
-  if (article.imageUrl) return article.imageUrl;
-  return SOURCE_FALLBACK_IMAGES[article.source] || null;
+function getArticleImageCandidates(article: FinanceArticle): string[] {
+  const candidates = [
+    article.imageUrl || '',
+    SOURCE_FALLBACK_IMAGES[article.source] || '',
+    ...getCategoryPlaceholders(article.category),
+  ].filter(Boolean);
+
+  return [...new Set(candidates)];
+}
+
+function FinanceArticleImage({ article }: { article: FinanceArticle }) {
+  const imageCandidates = useMemo(() => getArticleImageCandidates(article), [article]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [article.id, article.imageUrl, article.source, article.category]);
+
+  const imageSrc = imageCandidates[candidateIndex];
+
+  if (!imageSrc) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+        <svg className="w-12 h-12 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+        </svg>
+      </div>
+    );
+  }
+
+  const isLogo = imageSrc.includes('logo');
+
+  return (
+    <div className={`w-full h-full flex items-center justify-center ${isLogo ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 p-6' : ''}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageSrc}
+        alt={article.title}
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        decoding="async"
+        onError={() => {
+          setCandidateIndex((prev) => {
+            const nextIndex = prev + 1;
+            return nextIndex < imageCandidates.length ? nextIndex : prev;
+          });
+        }}
+        className={`${
+          isLogo
+            ? 'max-h-full max-w-full object-contain'
+            : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
+        }`}
+      />
+    </div>
+  );
 }
 
 // Fallback data
@@ -296,59 +348,81 @@ export default function FinancePage() {
 
   // Fetch data on mount
   useEffect(() => {
-    async function fetchData() {
+    // Guards against applying responses after the market changed or the page
+    // unmounted, which would otherwise let a slow in-flight request overwrite
+    // newer data.
+    let cancelled = false;
+
+    function fetchData() {
       setLoading(true);
-      
-      try {
-        // Fetch all data in parallel (including archived articles and market summaries)
-        const [stocksRes, forexRes, articlesRes, archivedRes, historyRes, summariesRes] = await Promise.all([
-          fetch('/api/finance/stocks').then(r => r.json()).catch(() => ({ stocks: FALLBACK_STOCKS })),
-          fetch('/api/finance/forex').then(r => r.json()).catch(() => ({ rates: FALLBACK_FOREX })),
-          // Fetch a larger window so market filters can slice reliably
-          fetch('/api/finance/articles?limit=100', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
-          // Fetch more archived articles to ensure we get enough Mozambique/Qatar articles
-          fetch('/api/finance/articles?archived=true&limit=500', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ articles: [] })),
-          fetch('/api/finance/stock-history').then(r => r.json()).catch(() => ({ history: {} })),
-          fetch(`/api/finance/market-summary?market=${selectedMarket}`).then(r => r.json()).catch(() => ({ summaries: [] })),
-        ]);
 
-        if (stocksRes.stocks?.length > 0) {
-          setStocks(stocksRes.stocks);
+      const getJson = async <T,>(url: string, init?: RequestInit): Promise<T | null> => {
+        try {
+          const response = await fetch(url, init);
+          if (!response.ok) return null;
+          return (await response.json()) as T;
+        } catch {
+          return null;
         }
-        
-        if (forexRes.rates?.length > 0) {
-          setForexRates(forexRes.rates);
-        }
-        
-        if (articlesRes.articles?.length > 0) {
-          setArticles(articlesRes.articles);
-        }
+      };
 
-        if (archivedRes.articles?.length > 0) {
-          setArchivedArticles(archivedRes.articles);
-        }
-        
-        if (historyRes.history) {
-          setStockHistory(historyRes.history);
-        }
-
-        if (summariesRes.summaries?.length > 0) {
-          setMarketSummaries(summariesRes.summaries);
-        }
-        
-        setLastUpdated(new Date().toLocaleTimeString());
-      } catch (error) {
-        console.error('Error fetching finance data:', error);
-      } finally {
+      // Each request applies its own result the moment it lands, rather than
+      // waiting on the slowest one. This matters because market-summary
+      // regenerates through OpenAI when its cache expires (~8s), which used to
+      // hold the articles grid on skeletons even though articles resolve in
+      // ~150ms.
+      //
+      // Articles use a larger window so market filters can slice reliably.
+      const articlesDone = getJson<{ articles?: FinanceArticle[] }>(
+        '/api/finance/articles?limit=100',
+        { cache: 'no-store' }
+      ).then((data) => {
+        if (cancelled) return;
+        if (data?.articles?.length) setArticles(data.articles);
+        // Release the skeletons as soon as the articles themselves are in.
         setLoading(false);
-      }
+      });
+
+      const rest = [
+        getJson<{ stocks?: Stock[] }>('/api/finance/stocks').then((data) => {
+          if (!cancelled && data?.stocks?.length) setStocks(data.stocks);
+        }),
+        getJson<{ rates?: ForexRate[] }>('/api/finance/forex').then((data) => {
+          if (!cancelled && data?.rates?.length) setForexRates(data.rates);
+        }),
+        // Fetch more archived articles to ensure we get enough Mozambique/Qatar articles
+        getJson<{ articles?: FinanceArticle[] }>('/api/finance/articles?archived=true&limit=500', {
+          cache: 'no-store',
+        }).then((data) => {
+          if (!cancelled && data?.articles?.length) setArchivedArticles(data.articles);
+        }),
+        getJson<{ history?: Record<string, PricePoint[]> }>('/api/finance/stock-history').then(
+          (data) => {
+            if (!cancelled && data?.history) setStockHistory(data.history);
+          }
+        ),
+        getJson<{ summaries?: MarketSummary[] }>(
+          `/api/finance/market-summary?market=${selectedMarket}`
+        ).then((data) => {
+          if (!cancelled && data?.summaries?.length) setMarketSummaries(data.summaries);
+        }),
+      ];
+
+      Promise.allSettled([articlesDone, ...rest]).then(() => {
+        if (cancelled) return;
+        setLoading(false);
+        setLastUpdated(new Date().toLocaleTimeString());
+      });
     }
 
     fetchData();
-    
+
     // Refresh every 5 minutes
     const interval = setInterval(fetchData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [selectedMarket]);
 
   const toggleSummary = (id: number) => {
@@ -726,37 +800,7 @@ export default function FinancePage() {
                     >
                       {/* Article Image */}
                       <div className="relative aspect-[16/10] bg-zinc-800 overflow-hidden">
-                        {(() => {
-                          const displayImage = getArticleImage(article);
-                          const isLogo = displayImage && displayImage.includes('logo');
-                          
-                          if (displayImage) {
-                            return (
-                              <div className={`w-full h-full flex items-center justify-center ${
-                                isLogo ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 p-6' : ''
-                              }`}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img 
-                                  src={displayImage} 
-                                  alt={article.title}
-                                  className={`${
-                                    isLogo 
-                                      ? 'max-h-full max-w-full object-contain' 
-                                      : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
-                                  }`}
-                                />
-                              </div>
-                            );
-                          }
-                          
-                          return (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-                              <svg className="w-12 h-12 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                              </svg>
-                            </div>
-                          );
-                        })()}
+                        <FinanceArticleImage article={article} />
                       </div>
                       
                       {/* Article Content */}

@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:feeds": "npx tsx scripts/test-feeds.ts"
+    "test:feeds": "npx tsx scripts/test-feeds.ts",
+    "test:feed-fallback": "npx tsx scripts/verify-feed-fallback.mjs",
+    "test:feed-regression": "npx tsx scripts/verify-feed-nonregression.mjs",
+    "test:finance-load": "node scripts/verify-finance-load.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
