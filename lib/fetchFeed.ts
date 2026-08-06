@@ -32,6 +32,9 @@ export interface FetchFeedResult {
     contentType?: string;
     responsePreview?: string;
     parseError?: string;
+    // Set when the direct fetch was blocked and a converter served the items.
+    converter?: string;
+    directError?: string;
   };
 }
 
@@ -54,6 +57,168 @@ function devWarn(message: string, data?: unknown) {
 }
 
 /**
+ * HTTP statuses that mean "the feed exists but the edge refused us".
+ * 404/410 are excluded: those feeds are genuinely gone, so retrying
+ * through a converter would just waste a request.
+ */
+const BOT_BLOCK_STATUSES = new Set([401, 403, 406, 409, 429, 500, 502, 503, 520, 521, 522, 526]);
+
+/**
+ * Coerce a converter-supplied date into an ISO 8601 string.
+ *
+ * feed2json returns proper ISO ("2026-08-03T14:35:09.000Z"). rss2json returns
+ * a space-separated UTC string ("2026-08-03 14:35:09") which Date() would
+ * otherwise read as local time, shifting pub_date by the server's offset.
+ */
+function toIsoDate(raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined;
+
+  const value = raw.trim();
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+    ? `${value.replace(' ', 'T')}Z`
+    : value;
+
+  const parsed = new Date(normalized);
+  return isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
+/**
+ * Add a throwaway query parameter to the feed URL.
+ *
+ * The converters cache by exact URL, and feed2json is load-balanced across
+ * nodes whose caches fall out of sync — repeated calls with a plain URL were
+ * observed returning a mix of current and three-day-old snapshots. A unique
+ * parameter forces every node to re-fetch upstream, which is what we need for
+ * a news pipeline. WordPress and other feed generators ignore unknown query
+ * params, so the upstream response is unchanged.
+ */
+function withCacheBuster(feedUrl: string): string {
+  const separator = feedUrl.includes('?') ? '&' : '?';
+  return `${feedUrl}${separator}_cb=${Date.now()}`;
+}
+
+/**
+ * Fetch a feed through feed2json.org, which returns JSON Feed format.
+ */
+async function fetchViaFeed2Json(feedUrl: string): Promise<RawFeedItem[] | null> {
+  const response = await fetch(
+    `https://feed2json.org/convert?url=${encodeURIComponent(withCacheBuster(feedUrl))}`,
+    {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(20000),
+    }
+  );
+
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as { items?: unknown };
+  if (!Array.isArray(payload.items) || payload.items.length === 0) return null;
+
+  return payload.items.map((raw) => {
+    const item = raw as Record<string, unknown>;
+    const isoDate = toIsoDate(item.date_published);
+
+    return {
+      title: typeof item.title === 'string' ? item.title : undefined,
+      link: typeof item.url === 'string' ? item.url : undefined,
+      pubDate: isoDate,
+      isoDate,
+      content: typeof item.content_html === 'string' ? item.content_html : undefined,
+      contentSnippet: typeof item.summary === 'string' ? item.summary : undefined,
+      guid: typeof item.guid === 'string' ? item.guid : undefined,
+    } satisfies RawFeedItem;
+  });
+}
+
+/**
+ * Fetch a feed through rss2json.com, which returns its own JSON shape.
+ */
+async function fetchViaRss2Json(feedUrl: string): Promise<RawFeedItem[] | null> {
+  const response = await fetch(
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(withCacheBuster(feedUrl))}`,
+    {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(20000),
+    }
+  );
+
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as { status?: string; items?: unknown };
+  if (payload.status !== 'ok') return null;
+  if (!Array.isArray(payload.items) || payload.items.length === 0) return null;
+
+  return payload.items.map((raw) => {
+    const item = raw as Record<string, unknown>;
+    const isoDate = toIsoDate(item.pubDate);
+    const thumbnail = typeof item.thumbnail === 'string' && item.thumbnail.trim()
+      ? item.thumbnail.trim()
+      : undefined;
+
+    const enclosure = item.enclosure as Record<string, unknown> | undefined;
+    const enclosureUrl =
+      enclosure && typeof enclosure.link === 'string' && enclosure.link.trim()
+        ? enclosure.link.trim()
+        : enclosure && typeof enclosure.url === 'string' && enclosure.url.trim()
+          ? enclosure.url.trim()
+          : undefined;
+
+    return {
+      title: typeof item.title === 'string' ? item.title : undefined,
+      link: typeof item.link === 'string' ? item.link : undefined,
+      pubDate: isoDate,
+      isoDate,
+      content: typeof item.content === 'string' ? item.content : undefined,
+      contentSnippet: typeof item.description === 'string' ? item.description : undefined,
+      guid: typeof item.guid === 'string' ? item.guid : undefined,
+      image: thumbnail,
+      enclosure: enclosureUrl ? { url: enclosureUrl } : undefined,
+    } satisfies RawFeedItem;
+  });
+}
+
+/**
+ * Converter fallback for edge-blocked feeds.
+ *
+ * Cloudflare on some publishers (clubofmozambique.com since 2026-07-31)
+ * returns HTTP 403 to Vercel's serverless IP ranges for the /feed/ endpoints,
+ * even though the same URL returns 200 from a browser or any residential IP.
+ * The block is IP-based, not User-Agent based, so no header tweak recovers it.
+ *
+ * These converters fetch the feed from their own infrastructure and hand back
+ * parsed items. Both preserve the upstream <guid>, so generateArticleId()
+ * produces the same IDs as the direct path and de-duplication still holds if
+ * the direct fetch starts working again.
+ */
+async function fetchFeedViaConverter(
+  feedUrl: string
+): Promise<{ items: RawFeedItem[]; converter: string } | null> {
+  const converters: { name: string; fn: (url: string) => Promise<RawFeedItem[] | null> }[] = [
+    { name: 'feed2json', fn: fetchViaFeed2Json },
+    { name: 'rss2json', fn: fetchViaRss2Json },
+  ];
+
+  for (const { name, fn } of converters) {
+    try {
+      const items = await fn(feedUrl);
+      if (items && items.length > 0) {
+        // Drop anything the converter couldn't give us a title+link for;
+        // normalizeFeedItem would reject those anyway.
+        const usable = items.filter((item) => item.title?.trim() && item.link?.trim());
+        if (usable.length > 0) {
+          return { items: usable, converter: name };
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      devWarn(`Converter ${name} failed for ${feedUrl}: ${msg}`);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Fetch and parse a single RSS feed
  * 
  * Uses fetch() + parseString() for better error diagnostics
@@ -67,6 +232,38 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
   const diagnostics: FetchFeedResult['diagnostics'] = {};
 
   devLog(`Fetching: ${feed.name}`, feed.url);
+
+  /**
+   * Last-resort recovery for a direct fetch that produced no items.
+   * Returns a successful result if a converter can supply the feed,
+   * otherwise the original failure so the caller still sees the real cause.
+   */
+  const recoverOrFail = async (directError: string): Promise<FetchFeedResult> => {
+    const recovered = await fetchFeedViaConverter(feed.url);
+
+    if (recovered) {
+      devLog(`${feed.name}: ✅ Recovered ${recovered.items.length} items via ${recovered.converter}`);
+      return {
+        source: feed.name,
+        url: feed.url,
+        items: recovered.items,
+        error: null,
+        fetchedAt,
+        articleType: feed.articleType || 'policy',
+        diagnostics: { ...diagnostics, converter: recovered.converter, directError },
+      };
+    }
+
+    return {
+      source: feed.name,
+      url: feed.url,
+      items: [],
+      error: directError,
+      fetchedAt,
+      articleType: feed.articleType || 'policy',
+      diagnostics: { ...diagnostics, directError },
+    };
+  };
 
   try {
     // Step 1: Fetch the raw response
@@ -97,6 +294,12 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
         // Ignore preview errors
       }
 
+      // An edge block (403 etc.) means the feed is fine but we're refused;
+      // a converter can still reach it. A 404 means it's actually gone.
+      if (BOT_BLOCK_STATUSES.has(response.status)) {
+        return recoverOrFail(errorMsg);
+      }
+
       return {
         source: feed.name,
         url: feed.url,
@@ -118,16 +321,9 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
       diagnostics.responsePreview = text.slice(0, 500);
       devWarn(`${feed.name}: ${errorMsg}`);
       devWarn(`${feed.name} HTML preview:`, text.slice(0, 200));
-      
-      return {
-        source: feed.name,
-        url: feed.url,
-        items: [],
-        error: errorMsg,
-        fetchedAt,
-        articleType: feed.articleType || 'policy',
-        diagnostics,
-      };
+
+      // A challenge/interstitial page served with HTTP 200 is still a block.
+      return recoverOrFail(errorMsg);
     }
 
     // Step 3: Parse the XML/RSS
@@ -168,29 +364,14 @@ export async function fetchFeed(feed: FeedSource): Promise<FetchFeedResult> {
       devWarn(`${feed.name}: Parse error - ${parseError}`);
       devWarn(`${feed.name} content preview:`, text.slice(0, 200));
 
-      return {
-        source: feed.name,
-        url: feed.url,
-        items: [],
-        error: `Parse error: ${parseError}`,
-        fetchedAt,
-        articleType: feed.articleType || 'policy',
-        diagnostics,
-      };
+      return recoverOrFail(`Parse error: ${parseError}`);
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     devWarn(`${feed.name}: Fetch error - ${errorMessage}`);
-    
-    return {
-      source: feed.name,
-      url: feed.url,
-      items: [],
-      error: errorMessage,
-      fetchedAt,
-      articleType: feed.articleType || 'policy',
-      diagnostics,
-    };
+
+    // Covers timeouts and connection resets, which some edges use instead of 403.
+    return recoverOrFail(errorMessage);
   }
 }
 

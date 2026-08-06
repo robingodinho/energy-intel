@@ -222,9 +222,12 @@ const FINANCE_SOURCES: FeedSource[] = [
   {
     name: 'ESI Africa Mozambique',
     url: 'https://www.esi-africa.com/tag/mozambique/feed/',
-    enabled: true,
+    enabled: false,
     articleType: 'finance',
-    // Enable after verifying availability; focused on power/energy sector
+    // ❌ Returns 403 Forbidden from every network tested, including residential
+    // IPs, and both converter fallbacks are refused too. Unlike the Club of
+    // Mozambique feeds this is not a Vercel-IP block, so it can't be recovered.
+    // Disabled 2026-08-06.
   },
   {
     name: 'Engineering News Energy',
