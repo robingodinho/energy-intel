@@ -330,7 +330,7 @@ export default function AboutPage() {
             </section>
 
             <section className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800/50">
-              <h2 className="text-2xl font-semibold text-cyan-400 mb-4 text-center">Contributor</h2>
+              <h2 className="text-2xl font-semibold text-cyan-400 mb-4 text-center">Founder</h2>
               
               {/* Profile Image */}
               <div className="flex justify-center mb-6">
