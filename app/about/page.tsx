@@ -140,7 +140,7 @@ export default function AboutPage() {
                   <div>
                     <h3 className="font-semibold text-zinc-100 mb-1">Real-Time Updates</h3>
                     <p className="leading-relaxed">
-                      Our platform updates every 6 hours, ensuring you never miss critical policy changes or regulatory 
+                      Our platform updates every hour, ensuring you never miss critical policy changes or regulatory 
                       announcements that could impact your operations.
                     </p>
                   </div>
@@ -226,7 +226,7 @@ export default function AboutPage() {
                     <h3 className="font-semibold text-zinc-100">AI Market Summaries</h3>
                   </div>
                   <p className="text-sm text-zinc-400">
-                    Six AI-generated market insights updated every 6 hours, powered by 
+                    Six AI-generated market insights updated every hour, powered by 
                     <span className="text-cyan-400"> OpenAI GPT-4o-mini</span>. The AI analyzes recent finance articles 
                     to produce actionable summaries covering oil, gas, renewables, and market trends.
                   </p>
