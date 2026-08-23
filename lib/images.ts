@@ -1,4 +1,5 @@
 import { ArticleCategory } from '@/types/article';
+import { toDeliverableImageUrl } from '@/lib/imageProxy';
 
 /**
  * Placeholder image mapping for article categories
@@ -42,7 +43,7 @@ export function getArticleImage(article: {
 }): string {
   // Use scraped image_url if available
   if (article.image_url && isValidImageUrl(article.image_url)) {
-    return article.image_url;
+    return toDeliverableImageUrl(article.image_url);
   }
 
   // Source-based fallback (brand images) if scraping failed

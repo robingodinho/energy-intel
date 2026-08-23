@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { EnervaBrand } from '@/components/EnervaBrand';
 import { getCategoryPlaceholders } from '@/lib/images';
+import { toDeliverableImageUrl } from '@/lib/imageProxy';
 
 // Types for API responses
 interface Stock {
@@ -46,8 +47,16 @@ const SOURCE_FALLBACK_IMAGES: Record<string, string> = {
 };
 
 function getArticleImageCandidates(article: FinanceArticle): string[] {
+  const rawImageUrl = article.imageUrl || '';
+
+  // Challenged hosts go through our proxy first. The raw URL is kept as a
+  // second attempt: it still works for anyone whose browser already holds a
+  // Cloudflare clearance cookie, and covers us if the proxy ever fails.
+  const deliverable = rawImageUrl ? toDeliverableImageUrl(rawImageUrl) : '';
+
   const candidates = [
-    article.imageUrl || '',
+    deliverable,
+    rawImageUrl,
     SOURCE_FALLBACK_IMAGES[article.source] || '',
     ...getCategoryPlaceholders(article.category),
   ].filter(Boolean);
