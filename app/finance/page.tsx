@@ -260,6 +260,49 @@ function SourceIcon({ source }: { source: string }) {
   );
 }
 
+/**
+ * Fetch JSON with a bounded timeout and a few retries.
+ *
+ * The articles request used to get exactly one attempt, and any failure was
+ * swallowed into a null result. Because the grid falls through to its empty
+ * state as soon as loading clears, one dropped request left "Recent
+ * Developments" blank until the five-minute refresh, which is why reloading
+ * the page appeared to fix it. Retrying here keeps a transient failure from
+ * becoming a visibly empty section.
+ */
+async function fetchJson<T>(
+  url: string,
+  options: { init?: RequestInit; attempts?: number; timeoutMs?: number } = {}
+): Promise<T | null> {
+  const { init, attempts = 3, timeoutMs = 12000 } = options;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      // AbortSignal.timeout is unavailable on older Safari; fall back to no
+      // timeout rather than throwing before the request is even made.
+      const signal =
+        typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+          ? AbortSignal.timeout(timeoutMs)
+          : undefined;
+
+      const response = await fetch(url, signal ? { ...init, signal } : init);
+      if (response.ok) {
+        return (await response.json()) as T;
+      }
+    } catch {
+      // Network error, abort or malformed body; fall through to the retry.
+    }
+
+    if (attempt < attempts) {
+      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+    }
+  }
+
+  return null;
+}
+
+type ArticlesStatus = 'loading' | 'ready' | 'error';
+
 export default function FinancePage() {
   const [selectedMarket, setSelectedMarket] = useState<Market>('US');
   const [marketDropdownOpen, setMarketDropdownOpen] = useState(false);
@@ -274,6 +317,10 @@ export default function FinancePage() {
   const [marketSummaries, setMarketSummaries] = useState<MarketSummary[]>(FALLBACK_MARKET_SUMMARIES);
   const [stockHistory, setStockHistory] = useState<Record<string, PricePoint[]>>({});
   const [loading, setLoading] = useState(true);
+  // Tracked separately from `loading` so the articles grid can tell a failed
+  // request apart from a genuinely empty result.
+  const [articlesStatus, setArticlesStatus] = useState<ArticlesStatus>('loading');
+  const [reloadKey, setReloadKey] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [usdAmountStr, setUsdAmountStr] = useState<string>('1');
   const usdAmount = parseFloat(usdAmountStr) || 0;
@@ -365,16 +412,6 @@ export default function FinancePage() {
     function fetchData() {
       setLoading(true);
 
-      const getJson = async <T,>(url: string, init?: RequestInit): Promise<T | null> => {
-        try {
-          const response = await fetch(url, init);
-          if (!response.ok) return null;
-          return (await response.json()) as T;
-        } catch {
-          return null;
-        }
-      };
-
       // Each request applies its own result the moment it lands, rather than
       // waiting on the slowest one. This matters because market-summary
       // regenerates through OpenAI when its cache expires (~8s), which used to
@@ -382,36 +419,50 @@ export default function FinancePage() {
       // ~150ms.
       //
       // Articles use a larger window so market filters can slice reliably.
-      const articlesDone = getJson<{ articles?: FinanceArticle[] }>(
+      const articlesDone = fetchJson<{ articles?: FinanceArticle[] }>(
         '/api/finance/articles?limit=100',
-        { cache: 'no-store' }
+        { init: { cache: 'no-store' }, attempts: 3 }
       ).then((data) => {
         if (cancelled) return;
-        if (data?.articles?.length) setArticles(data.articles);
+
+        if (data?.articles) {
+          // Only replace the list when there is something to show, so a
+          // background refresh that comes back empty can't blank the grid.
+          if (data.articles.length) setArticles(data.articles);
+          setArticlesStatus('ready');
+        } else {
+          // Keep a grid that is already populated rather than reporting an
+          // error over the top of good data.
+          setArticlesStatus((prev) => (prev === 'ready' ? 'ready' : 'error'));
+        }
+
         // Release the skeletons as soon as the articles themselves are in.
         setLoading(false);
       });
 
       const rest = [
-        getJson<{ stocks?: Stock[] }>('/api/finance/stocks').then((data) => {
+        fetchJson<{ stocks?: Stock[] }>('/api/finance/stocks').then((data) => {
           if (!cancelled && data?.stocks?.length) setStocks(data.stocks);
         }),
-        getJson<{ rates?: ForexRate[] }>('/api/finance/forex').then((data) => {
+        fetchJson<{ rates?: ForexRate[] }>('/api/finance/forex').then((data) => {
           if (!cancelled && data?.rates?.length) setForexRates(data.rates);
         }),
         // Fetch more archived articles to ensure we get enough Mozambique/Qatar articles
-        getJson<{ articles?: FinanceArticle[] }>('/api/finance/articles?archived=true&limit=500', {
-          cache: 'no-store',
+        fetchJson<{ articles?: FinanceArticle[] }>('/api/finance/articles?archived=true&limit=500', {
+          init: { cache: 'no-store' },
         }).then((data) => {
           if (!cancelled && data?.articles?.length) setArchivedArticles(data.articles);
         }),
-        getJson<{ history?: Record<string, PricePoint[]> }>('/api/finance/stock-history').then(
+        fetchJson<{ history?: Record<string, PricePoint[]> }>('/api/finance/stock-history').then(
           (data) => {
             if (!cancelled && data?.history) setStockHistory(data.history);
           }
         ),
-        getJson<{ summaries?: MarketSummary[] }>(
-          `/api/finance/market-summary?market=${selectedMarket}`
+        // Given a longer ceiling because an expired cache regenerates through
+        // OpenAI, which takes several seconds on its own.
+        fetchJson<{ summaries?: MarketSummary[] }>(
+          `/api/finance/market-summary?market=${selectedMarket}`,
+          { attempts: 2, timeoutMs: 30000 }
         ).then((data) => {
           if (!cancelled && data?.summaries?.length) setMarketSummaries(data.summaries);
         }),
@@ -432,7 +483,7 @@ export default function FinancePage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [selectedMarket]);
+  }, [selectedMarket, reloadKey]);
 
   const toggleSummary = (id: number) => {
     setExpandedSummaries(prev => {
@@ -478,6 +529,10 @@ export default function FinancePage() {
     }
     return archivedArticles.filter((a) => US_FINANCE_SOURCES.has(a.source)).slice(0, 9);
   }, [archivedArticles, selectedMarket]);
+
+  const activeArticles = showArchive ? visibleArchivedArticles : visibleRecentArticles;
+  const articlesPending = showArchive ? loading : articlesStatus === 'loading';
+  const articlesFailed = !showArchive && articlesStatus === 'error';
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -790,17 +845,20 @@ export default function FinancePage() {
                   </div>
                 </div>
                 <span className="text-xs text-cyan-400">
-                  {showArchive 
+                  {showArchive
                     ? (visibleArchivedArticles.length > 0 ? `${visibleArchivedArticles.length} archived` : 'No archived articles')
-                    : (visibleRecentArticles.length > 0 ? `${visibleRecentArticles.length} articles` : 'Loading...')
-                  }
+                    : visibleRecentArticles.length > 0
+                      ? `${visibleRecentArticles.length} articles`
+                      : articlesFailed
+                        ? 'Could not load'
+                        : 'Loading...'}
                 </span>
               </div>
               
               {/* Articles Grid with Images */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(showArchive ? visibleArchivedArticles : visibleRecentArticles).length > 0 ? (
-                  (showArchive ? visibleArchivedArticles : visibleRecentArticles).map((article) => (
+                {activeArticles.length > 0 ? (
+                  activeArticles.map((article) => (
                     <a
                       key={article.id}
                       href={article.link}
@@ -836,7 +894,7 @@ export default function FinancePage() {
                       </div>
                     </a>
                   ))
-                ) : loading ? (
+                ) : articlesPending ? (
                   // Loading skeleton
                   [...Array(6)].map((_, i) => (
                     <div key={i} className="bg-zinc-800/30 border border-zinc-700/40 rounded-xl overflow-hidden animate-pulse">
@@ -848,6 +906,25 @@ export default function FinancePage() {
                       </div>
                     </div>
                   ))
+                ) : articlesFailed ? (
+                  // The request failed rather than returning nothing, so offer a
+                  // retry instead of implying there is no news.
+                  <div className="col-span-full text-center py-12">
+                    <svg className="w-16 h-16 text-zinc-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                    <p className="text-zinc-500 text-sm mb-4">Couldn&apos;t load the latest articles.</p>
+                    <button
+                      onClick={() => {
+                        setArticlesStatus('loading');
+                        setReloadKey((key) => key + 1);
+                      }}
+                      className="px-4 py-2 text-xs font-medium rounded-md bg-cyan-500/20 text-cyan-400
+                               hover:bg-cyan-500/30 transition-colors duration-200"
+                    >
+                      Try again
+                    </button>
+                  </div>
                 ) : (
                   // Empty state
                   <div className="col-span-full text-center py-12">

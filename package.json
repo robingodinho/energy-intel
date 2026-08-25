@@ -11,6 +11,7 @@
     "test:feed-fallback": "npx tsx scripts/verify-feed-fallback.mjs",
     "test:feed-regression": "npx tsx scripts/verify-feed-nonregression.mjs",
     "test:finance-load": "node scripts/verify-finance-load.mjs",
+    "test:finance-resilience": "node scripts/verify-finance-resilience.mjs",
     "test:image-proxy": "node scripts/verify-image-proxy.mjs",
     "diagnose:club-images": "node scripts/diagnose-club-images.mjs"
   },
