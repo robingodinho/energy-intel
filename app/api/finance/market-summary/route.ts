@@ -5,8 +5,8 @@ import OpenAI from 'openai';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Cache duration: 6 hours (matches CRON schedule)
-const CACHE_DURATION_HOURS = 6;
+// Cache duration: 1 hour (matches the hourly ingest schedule)
+const CACHE_DURATION_HOURS = 1;
 
 interface MarketSummary {
   id: number;
@@ -23,7 +23,7 @@ interface CachedSummaries {
  * GET /api/finance/market-summary
  * 
  * Returns AI-generated market summaries based on recent finance articles.
- * Summaries are cached and regenerated every 6 hours with the CRON job.
+ * Summaries are cached for an hour and regenerated on the first request after that.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -105,23 +105,34 @@ async function generateMarketSummaries(
   const cutoffDate = new Date();
   cutoffDate.setHours(cutoffDate.getHours() - 48);
 
-  let query = supabase
-    .from('articles')
-    .select('title, summary, source, pub_date')
-    .eq('article_type', 'finance')
-    .gte('pub_date', cutoffDate.toISOString())
-    .order('pub_date', { ascending: false })
-    .limit(40);
+  const recentArticles = (limit: number) =>
+    supabase
+      .from('articles')
+      .select('title, summary, source, pub_date')
+      .eq('article_type', 'finance')
+      .gte('pub_date', cutoffDate.toISOString())
+      .order('pub_date', { ascending: false })
+      .limit(limit);
+
+  let articles: { title: string; summary: string; source: string; pub_date: string }[] | null;
+  let error: unknown;
 
   if (market === 'MZ') {
-    query = query.or('source.ilike.%mozambique%,title.ilike.%mozambique%,summary.ilike.%mozambique%');
+    ({ data: articles, error } = await recentArticles(40)
+      .or('source.ilike.%mozambique%,title.ilike.%mozambique%,summary.ilike.%mozambique%'));
   } else if (market === 'QA') {
-    query = query.or('source.ilike.%qatar%,title.ilike.%qatar%,summary.ilike.%qatar%');
+    ({ data: articles, error } = await recentArticles(40)
+      .or('source.ilike.%qatar%,title.ilike.%qatar%,summary.ilike.%qatar%'));
   } else {
-    query = query.in('source', ['Yahoo Finance', 'CNBC Energy']);
+    // Per-source cap so Yahoo's hourly volume doesn't crowd CNBC Energy out of the briefing.
+    const perSource = await Promise.all(
+      ['Yahoo Finance', 'CNBC Energy'].map((source) => recentArticles(20).eq('source', source))
+    );
+    error = perSource.find((r) => r.error)?.error ?? null;
+    articles = perSource
+      .flatMap((r) => r.data ?? [])
+      .sort((a, b) => b.pub_date.localeCompare(a.pub_date));
   }
-
-  const { data: articles, error } = await query;
 
   if (error || !articles || articles.length === 0) {
     console.error('[market-summary] No recent articles found:', error);

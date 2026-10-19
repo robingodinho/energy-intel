@@ -156,11 +156,11 @@ const INTERNATIONAL_SOURCES: FeedSource[] = [
 const FINANCE_SOURCES: FeedSource[] = [
   {
     name: 'Yahoo Finance',
-    url: 'https://finance.yahoo.com/news/rssindex',
+    url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,XLE,CL%3DF&region=US&lang=en-US',
     enabled: true,
     articleType: 'finance',
-    // ✅ Yahoo Finance RSS - General financial news
-    // Good coverage of market movements, earnings, economic data
+    // ✅ Yahoo Finance headline RSS for S&P 500, Energy Select ETF and WTI crude
+    // The old general feed (finance.yahoo.com/news/rssindex) returns 404 since late Sept 2026
   },
   {
     name: 'CNBC Energy',

@@ -5,7 +5,15 @@
  * Enhanced with multiple fallback strategies for sites without OG tags.
  */
 
+import https from 'node:https';
+
 const isDev = process.env.NODE_ENV !== 'production';
+
+// Node's fetch caps response headers at 16KB; Yahoo Finance article pages exceed that.
+const LARGE_HEADER_LIMIT_BYTES = 128 * 1024;
+const MAX_HTML_CHARS = 100000;
+// Yahoo Finance pages carry ~160KB of inline markup before their og:image tag.
+const LARGE_HEADER_MAX_HTML_CHARS = 400000;
 
 /**
  * Result of scraping an article for its cover image
@@ -472,6 +480,90 @@ async function fetchClubOfMozambiqueImage(articleUrl: string): Promise<string | 
   return null;
 }
 
+function isHeadersOverflowError(err: unknown): boolean {
+  const cause = (err as { cause?: { code?: string } } | null)?.cause;
+  return cause?.code === 'UND_ERR_HEADERS_OVERFLOW';
+}
+
+/**
+ * Fetch the start of a page's HTML with a raised response-header limit.
+ * Used when fetch() rejects a page for sending oversized headers.
+ */
+function fetchHtmlAllowingLargeHeaders(
+  pageUrl: string,
+  redirectsLeft = 5
+): Promise<{ status: number; contentType: string; html: string }> {
+  return new Promise((resolve, reject) => {
+    if (new URL(pageUrl).protocol !== 'https:') {
+      reject(new Error('Large-header fallback only supports https'));
+      return;
+    }
+
+    const req = https.get(
+      pageUrl,
+      {
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        maxHeaderSize: LARGE_HEADER_LIMIT_BYTES,
+        timeout: 10000,
+      },
+      (res) => {
+        const status = res.statusCode ?? 0;
+        const location = res.headers.location;
+
+        if (status >= 300 && status < 400 && location && redirectsLeft > 0) {
+          res.resume();
+          fetchHtmlAllowingLargeHeaders(new URL(location, pageUrl).toString(), redirectsLeft - 1)
+            .then(resolve, reject);
+          return;
+        }
+
+        const contentType = res.headers['content-type'] || '';
+        let html = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk: string) => {
+          html += chunk;
+          if (
+            html.length >= LARGE_HEADER_MAX_HTML_CHARS ||
+            /<\/head>/i.test(html.slice(-(chunk.length + 6)))
+          ) {
+            res.destroy();
+          }
+        });
+        res.on('close', () => resolve({ status, contentType, html }));
+        res.on('error', reject);
+      }
+    );
+
+    req.on('timeout', () => req.destroy(new Error('Timeout')));
+    req.on('error', reject);
+  });
+}
+
+async function scrapeWithLargeHeaders(articleUrl: string): Promise<ScrapeResult> {
+  const { status, contentType, html } = await fetchHtmlAllowingLargeHeaders(articleUrl);
+
+  if (status < 200 || status >= 300) {
+    return { success: false, error: `HTTP ${status}` };
+  }
+  if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
+    return { success: false, error: 'Not HTML content' };
+  }
+
+  const imageUrl = extractImageFromHtml(html.slice(0, LARGE_HEADER_MAX_HTML_CHARS), articleUrl);
+  if (!imageUrl) {
+    return { success: false, error: 'No image found' };
+  }
+
+  if (isDev) {
+    console.log(`[scrapeImage] Found image (large headers) for ${articleUrl.slice(0, 50)}: ${imageUrl.slice(0, 80)}`);
+  }
+  return { success: true, imageUrl };
+}
+
 /**
  * Scrape OpenGraph/Twitter image from an article URL
  * 
@@ -487,18 +579,24 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
     }
 
     // Fetch the page
-    const response = await fetch(articleUrl, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-      },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(10000), // 10 second timeout
-    });
+    let response: Response;
+    try {
+      response = await fetch(articleUrl, {
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+    } catch (fetchError) {
+      if (!isHeadersOverflowError(fetchError)) throw fetchError;
+      return await scrapeWithLargeHeaders(articleUrl);
+    }
 
     // Check response
     if (!response.ok) {
@@ -537,7 +635,7 @@ export async function scrapeArticleImage(articleUrl: string): Promise<ScrapeResu
 
     // Get HTML (limit to first 100KB to find images in content)
     const html = await response.text();
-    const limitedHtml = html.slice(0, 100000);
+    const limitedHtml = html.slice(0, MAX_HTML_CHARS);
 
     // Extract image URL
     const imageUrl = extractImageFromHtml(limitedHtml, articleUrl);
